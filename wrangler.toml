@@ -14,7 +14,7 @@ BASE_URL = "https://marketstreethoa.com"
 [[d1_databases]]
 binding = "DB"
 database_name = "market-st-hoa"
-database_id = "" # Set after: wrangler d1 create market-st-hoa
+database_id = "71ac037d-2682-4336-9cf7-234e97c5b462" # Set after: wrangler d1 create market-st-hoa
 
 # R2 Object Storage
 [[r2_buckets]]
