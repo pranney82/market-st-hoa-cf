@@ -3,8 +3,8 @@
 type Runtime = import("@astrojs/cloudflare").Runtime<Env>;
 
 interface Env {
+  DB: D1Database;
   R2: R2Bucket;
-  HYPERDRIVE: Hyperdrive;
   SESSIONS: KVNamespace;
   ASSETS: Fetcher;
   BASE_URL: string;

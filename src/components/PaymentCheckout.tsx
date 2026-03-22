@@ -28,9 +28,7 @@ export default function PaymentCheckout({ amount, userId }: Props) {
       }
     } catch {
       setError("Something went wrong. Please try again.");
-    } finally {
       setLoading(false);
-    }
   }
 
   return (

@@ -7,7 +7,7 @@ import { eq, desc } from "drizzle-orm";
 import { format } from "date-fns";
 
 const user = Astro.locals.user!;
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 
 const dues = await db
   .select()
@@ -15,7 +15,6 @@ const dues = await db
   .where(eq(duesPayments.userId, user.id))
   .orderBy(desc(duesPayments.dueDate));
 
-await pool.end();
 
 const pending = dues.filter((d) => d.status === "pending" || d.status === "overdue");
 const paid = dues.filter((d) => d.status === "paid");

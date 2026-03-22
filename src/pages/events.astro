@@ -6,7 +6,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { format } from "date-fns";
 
 const user = Astro.locals.user!;
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 
 const allEvents = await db
   .select({
@@ -30,7 +30,6 @@ const userRsvps = await db
   .from(eventRsvps)
   .where(and(eq(eventRsvps.userId, user.id), eq(eventRsvps.status, "attending")));
 
-await pool.end();
 
 const rsvpSet = new Set(userRsvps.map((r) => r.eventId));
 const now = new Date();

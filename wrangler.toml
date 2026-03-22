@@ -10,15 +10,16 @@ directory = "./dist"
 [vars]
 BASE_URL = "https://marketstreethoa.com"
 
+# D1 Database (replaces Neon + Hyperdrive — everything on CF now)
+[[d1_databases]]
+binding = "DB"
+database_name = "market-st-hoa"
+database_id = "" # Set after: wrangler d1 create market-st-hoa
+
 # R2 Object Storage
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "marketst-hoa-files"
-
-# Hyperdrive (Neon PostgreSQL)
-[[hyperdrive]]
-binding = "HYPERDRIVE"
-id = "REPLACE_WITH_HYPERDRIVE_ID"
 
 # KV (Sessions)
 [[kv_namespaces]]
@@ -28,11 +29,11 @@ id = "52c11eb22743403ca2b41668352b762b"
 # Cron Triggers
 [triggers]
 crons = [
-  "1 0 1 * *",   # Monthly dues - 1st at 12:01 AM
-  "0 1 * * *",   # Daily overdue check - 1:00 AM
-  "0 9 15 * *",  # Reminders - 15th at 9:00 AM
-  "0 2 5 * *",   # Mercury import - 5th at 2:00 AM
-  "0 * * * *",   # Settle payments - every hour
+  "1 0 1 * *",
+  "0 1 * * *",
+  "0 9 15 * *",
+  "0 2 5 * *",
+  "0 * * * *",
 ]
 
 [observability]

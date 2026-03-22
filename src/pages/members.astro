@@ -4,9 +4,8 @@ import { getDb } from "../lib/db";
 import { users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 const members = await db.select().from(users).where(eq(users.memberStatus, "active"));
-await pool.end();
 ---
 <App title="Members">
   <div class="max-w-4xl">

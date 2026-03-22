@@ -12,7 +12,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return Response.json({ error: "Question is required" }, { status: 400 });
   }
 
-  const { db, pool } = getDb(env);
+  const db = getDb(env);
 
   try {
     const [current] = await db
@@ -57,7 +57,4 @@ ${question}`,
   } catch (error) {
     console.error("Bylaws AI error:", error);
     return Response.json({ error: "Failed to get response" }, { status: 500 });
-  } finally {
-    await pool.end();
-  }
 };

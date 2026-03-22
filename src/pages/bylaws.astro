@@ -5,14 +5,13 @@ import { getDb } from "../lib/db";
 import { bylaws } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
 
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 const [currentBylaws] = await db
   .select()
   .from(bylaws)
   .where(eq(bylaws.isCurrent, true))
   .orderBy(desc(bylaws.createdAt))
   .limit(1);
-await pool.end();
 ---
 <App title="Bylaws">
   <div class="max-w-4xl">

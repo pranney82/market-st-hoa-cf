@@ -7,14 +7,13 @@ import { format } from "date-fns";
 
 const user = Astro.locals.user!;
 const isAdmin = user.role === "admin" || user.role === "board";
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 
 const conditions = isAdmin ? [] : [eq(documents.isPublic, true)];
 const docs = conditions.length > 0
   ? await db.select().from(documents).where(and(...conditions)).orderBy(desc(documents.createdAt))
   : await db.select().from(documents).orderBy(desc(documents.createdAt));
 
-await pool.end();
 
 const sizeStr = (bytes: string) => {
   const n = parseInt(bytes);

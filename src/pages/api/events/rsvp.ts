@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   if (!eventId) return redirect("/events");
 
-  const { db, pool } = getDb(env);
+  const db = getDb(env);
 
   try {
     const [event] = await db.select().from(events).where(eq(events.id, eventId));
@@ -54,7 +54,4 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     }
 
     return redirect("/events");
-  } finally {
-    await pool.end();
-  }
 };

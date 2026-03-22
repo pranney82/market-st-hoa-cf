@@ -6,7 +6,7 @@ import { eq, desc, gte, and } from "drizzle-orm";
 import { format } from "date-fns";
 
 const user = Astro.locals.user!;
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 
 // Fetch everything in parallel — data arrives with the HTML
 const [recentAnnouncements, upcomingEvents, myDues] = await Promise.all([
@@ -17,7 +17,6 @@ const [recentAnnouncements, upcomingEvents, myDues] = await Promise.all([
   ).orderBy(duesPayments.dueDate).limit(5),
 ]);
 
-await pool.end();
 
 const totalOwed = myDues.reduce((sum, d) => sum + parseFloat(d.amount), 0);
 ---

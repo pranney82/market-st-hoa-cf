@@ -22,12 +22,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const valid = await verify(currentPassword, user.localPasswordHash);
   if (!valid) return redirect("/settings?error=password");
 
-  const { db, pool } = getDb(env);
+  const db = getDb(env);
   try {
     const hashed = await hash(newPassword);
     await db.update(users).set({ localPasswordHash: hashed }).where(eq(users.id, user.id));
     return redirect("/settings?success=password");
-  } finally {
-    await pool.end();
-  }
 };

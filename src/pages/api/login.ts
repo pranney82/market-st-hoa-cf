@@ -14,7 +14,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect("/login?error=Email and password are required");
   }
 
-  const { db, pool } = getDb(env);
+  const db = getDb(env);
 
   try {
     const [user] = await db
@@ -45,7 +45,4 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         "Set-Cookie": cookie,
       },
     });
-  } finally {
-    await pool.end();
-  }
 };

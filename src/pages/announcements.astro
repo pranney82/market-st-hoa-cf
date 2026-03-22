@@ -7,7 +7,7 @@ import { format } from "date-fns";
 
 const user = Astro.locals.user!;
 const isAdmin = user.role === "admin" || user.role === "board";
-const { db, pool } = getDb(Astro.locals.runtime.env);
+const db = getDb(Astro.locals.runtime.env);
 
 const all = await db
   .select({
@@ -23,7 +23,6 @@ const all = await db
   .leftJoin(users, eq(announcements.createdBy, users.id))
   .orderBy(desc(announcements.createdAt));
 
-await pool.end();
 ---
 <App title="Announcements">
   <div class="max-w-4xl">

@@ -14,11 +14,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     if (val !== undefined && val !== null) updates[key] = val.trim();
   }
 
-  const { db, pool } = getDb(env);
+  const db = getDb(env);
   try {
     await db.update(users).set(updates).where(eq(users.id, user.id));
     return redirect("/settings?success=profile");
-  } finally {
-    await pool.end();
-  }
 };
