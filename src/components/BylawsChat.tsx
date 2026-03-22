@@ -20,7 +20,9 @@ export default function BylawsChat() {
       setAnswer(data.answer || data.error || "No response");
     } catch {
       setAnswer("Failed to get a response. Please try again.");
+    } finally {
       setLoading(false);
+    }
   }
 
   return (
