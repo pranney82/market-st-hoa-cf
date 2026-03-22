@@ -1,0 +1,15 @@
+SESSION_SECRET=generate-a-64-char-random-string
+HELCIM_API_TOKEN=avMTnW0f14lSsJsOelPA...
+MERCURY_API_TOKEN=secret-token:mercury_production_wma_...
+RESEND_FROM_EMAIL=noreply@comms.marketstreethoa.com
+RESEND_ADMIN_EMAIL=admin@comms.marketstreethoa.com
+RESEND_BILLING_EMAIL=billing@comms.marketstreethoa.com
+RESEND_EVENTS_EMAIL=events@comms.marketstreethoa.com
+RESEND_NOTIFICATIONS_EMAIL=notifications@comms.marketstreethoa.com
+RESEND_REQUESTS_EMAIL=requests@comms.marketstreethoa.com
+AI_INTEGRATIONS_ANTHROPIC_API_KEY=your-key
+AI_INTEGRATIONS_ANTHROPIC_BASE_URL=https://api.anthropic.com
+WEBSHARE_PROXY_HOST=142.111.48.253
+WEBSHARE_PROXY_PORT=7830
+WEBSHARE_PROXY_USER=fqppenrj
+WEBSHARE_PROXY_PASS=your-pass

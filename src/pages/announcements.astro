@@ -1,0 +1,66 @@
+---
+import App from "../layouts/App.astro";
+import { getDb } from "../lib/db";
+import { announcements, users } from "../../shared/schema";
+import { desc, eq } from "drizzle-orm";
+import { format } from "date-fns";
+
+const user = Astro.locals.user!;
+const isAdmin = user.role === "admin" || user.role === "board";
+const { db, pool } = getDb(Astro.locals.runtime.env);
+
+const all = await db
+  .select({
+    id: announcements.id,
+    title: announcements.title,
+    content: announcements.content,
+    priority: announcements.priority,
+    createdAt: announcements.createdAt,
+    authorFirst: users.firstName,
+    authorLast: users.lastName,
+  })
+  .from(announcements)
+  .leftJoin(users, eq(announcements.createdBy, users.id))
+  .orderBy(desc(announcements.createdAt));
+
+await pool.end();
+---
+<App title="Announcements">
+  <div class="max-w-4xl">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Announcements</h1>
+      {isAdmin && (
+        <a href="/announcements/new" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+          New Announcement
+        </a>
+      )}
+    </div>
+
+    {all.length === 0 ? (
+      <div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+        No announcements yet.
+      </div>
+    ) : (
+      <div class="space-y-4">
+        {all.map((a) => (
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold text-gray-900">{a.title}</h3>
+                  {a.priority === "urgent" && (
+                    <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">Urgent</span>
+                  )}
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                  {a.authorFirst} {a.authorLast} · {format(new Date(a.createdAt!), "MMM d, yyyy")}
+                </p>
+              </div>
+            </div>
+            <div class="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{a.content}</div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</App>

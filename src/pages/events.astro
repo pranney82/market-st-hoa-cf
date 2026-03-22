@@ -1,0 +1,90 @@
+---
+import App from "../layouts/App.astro";
+import { getDb } from "../lib/db";
+import { events, eventRsvps } from "../../shared/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { format } from "date-fns";
+
+const user = Astro.locals.user!;
+const { db, pool } = getDb(Astro.locals.runtime.env);
+
+const allEvents = await db
+  .select({
+    id: events.id,
+    title: events.title,
+    description: events.description,
+    startDateTime: events.startDateTime,
+    endDateTime: events.endDateTime,
+    location: events.location,
+    maxCapacity: events.maxCapacity,
+    attendeeCount: sql<number>`(
+      SELECT COUNT(*)::int FROM ${eventRsvps}
+      WHERE ${eventRsvps.eventId} = ${events.id} AND ${eventRsvps.status} = 'attending'
+    )`,
+  })
+  .from(events)
+  .orderBy(desc(events.startDateTime));
+
+const userRsvps = await db
+  .select()
+  .from(eventRsvps)
+  .where(and(eq(eventRsvps.userId, user.id), eq(eventRsvps.status, "attending")));
+
+await pool.end();
+
+const rsvpSet = new Set(userRsvps.map((r) => r.eventId));
+const now = new Date();
+---
+<App title="Events">
+  <div class="max-w-4xl">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Community Events</h1>
+
+    {allEvents.length === 0 ? (
+      <div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+        No events scheduled yet.
+      </div>
+    ) : (
+      <div class="space-y-4">
+        {allEvents.map((e) => {
+          const isPast = new Date(e.startDateTime) < now;
+          const isRsvped = rsvpSet.has(e.id);
+          return (
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="font-semibold text-gray-900">{e.title}</h3>
+                  <p class="text-sm text-gray-500 mt-1">
+                    {format(new Date(e.startDateTime), "EEE, MMM d 'at' h:mm a")}
+                    {e.location && <span> · {e.location}</span>}
+                  </p>
+                  {e.description && <p class="text-sm text-gray-600 mt-2">{e.description}</p>}
+                  <p class="text-xs text-gray-400 mt-2">
+                    {e.attendeeCount} attending
+                    {e.maxCapacity && <span> / {e.maxCapacity} spots</span>}
+                  </p>
+                </div>
+
+                {!isPast && (
+                  <form method="POST" action="/api/events/rsvp">
+                    <input type="hidden" name="eventId" value={e.id} />
+                    <button
+                      type="submit"
+                      class:list={[
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                        isRsvped
+                          ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          : "bg-blue-600 text-white hover:bg-blue-700",
+                      ]}
+                    >
+                      {isRsvped ? "Cancel RSVP" : "RSVP"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</App>
