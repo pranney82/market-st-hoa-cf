@@ -23,5 +23,10 @@ const { title, class: className } = Astro.props;
   </head>
   <body class={className}>
     <slot />
+    <script is:inline>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js");
+      }
+    </script>
   </body>
 </html>

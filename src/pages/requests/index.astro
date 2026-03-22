@@ -1,0 +1,66 @@
+---
+import App from "../layouts/App.astro";
+import { getDb } from "../lib/db";
+import { architecturalRequests, users } from "../../shared/schema";
+import { eq, desc } from "drizzle-orm";
+import { format } from "date-fns";
+
+const user = Astro.locals.user!;
+const isAdmin = user.role === "admin" || user.role === "board";
+const db = getDb(Astro.locals.runtime.env);
+
+const all = isAdmin
+  ? await db.select({ req: architecturalRequests, submitter: { firstName: users.firstName, lastName: users.lastName } })
+      .from(architecturalRequests).leftJoin(users, eq(architecturalRequests.submittedBy, users.id)).orderBy(desc(architecturalRequests.createdAt))
+  : await db.select({ req: architecturalRequests, submitter: { firstName: users.firstName, lastName: users.lastName } })
+      .from(architecturalRequests).leftJoin(users, eq(architecturalRequests.submittedBy, users.id))
+      .where(eq(architecturalRequests.submittedBy, user.id)).orderBy(desc(architecturalRequests.createdAt));
+
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-700",
+  approved: "bg-green-100 text-green-700",
+  denied: "bg-red-100 text-red-700",
+};
+const typeLabels: Record<string, string> = {
+  architectural: "Architectural",
+  contract_change: "Contract",
+  bylaw_update: "Bylaw",
+  general: "General",
+};
+---
+<App title="Requests">
+  <div class="max-w-4xl">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Requests</h1>
+      <a href="/requests/new" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+        New Request
+      </a>
+    </div>
+
+    {all.length === 0 ? (
+      <div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">No requests yet.</div>
+    ) : (
+      <div class="space-y-3">
+        {all.map(({ req: r, submitter: s }) => (
+          <a href={`/requests/${r.id}`} class="block bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 transition-colors">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold text-gray-900">{r.title}</h3>
+                  <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{typeLabels[r.requestType] || r.requestType}</span>
+                </div>
+                <p class="text-sm text-gray-600 mt-1 line-clamp-2">{r.description}</p>
+                <p class="text-xs text-gray-400 mt-2">
+                  {s?.firstName} {s?.lastName} · {format(new Date(r.createdAt!), "MMM d, yyyy")}
+                </p>
+              </div>
+              <span class:list={["text-xs font-medium px-2 py-1 rounded-full shrink-0", statusColors[r.status] || "bg-gray-100 text-gray-600"]}>
+                {r.status}
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</App>

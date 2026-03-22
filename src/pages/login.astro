@@ -6,6 +6,7 @@ const session = await import("../lib/auth").then(m => m.getSession(Astro.request
 if (session) return Astro.redirect("/dashboard");
 
 const error = Astro.url.searchParams.get("error");
+import Csrf from "../components/Csrf.astro";
 ---
 <Base title="Sign In">
   <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -23,6 +24,7 @@ const error = Astro.url.searchParams.get("error");
       )}
 
       <form method="POST" action="/api/login" class="space-y-4">
+        <Csrf />
         <div>
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
           <input type="email" id="email" name="email" required

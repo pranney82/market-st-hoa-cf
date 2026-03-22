@@ -1,0 +1,49 @@
+---
+import App from "../../layouts/App.astro";
+import { getDb } from "../../lib/db";
+import { users } from "../../../shared/schema";
+
+const user = Astro.locals.user!;
+if (user.role !== "admin") return Astro.redirect("/dashboard");
+
+const db = getDb(Astro.locals.runtime.env);
+const allUsers = await db.select().from(users);
+---
+<App title="Manage Users">
+  <div class="max-w-4xl">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Manage Users</h1>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {allUsers.map((u) => (
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-sm font-medium text-gray-900">{u.firstName} {u.lastName}</td>
+              <td class="px-4 py-3 text-sm text-gray-600">{u.email}</td>
+              <td class="px-4 py-3">
+                <span class:list={["text-xs font-medium px-2 py-1 rounded-full",
+                  u.role === "admin" ? "bg-purple-100 text-purple-700" :
+                  u.role === "board" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"]}>
+                  {u.role}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class:list={["text-xs font-medium px-2 py-1 rounded-full",
+                  u.memberStatus === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"]}>
+                  {u.memberStatus}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</App>

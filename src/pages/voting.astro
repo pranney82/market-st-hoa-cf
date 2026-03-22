@@ -1,0 +1,126 @@
+---
+import App from "../layouts/App.astro";
+import { getDb } from "../lib/db";
+import { ballots, ballotOptions, householdVotes, households } from "../../shared/schema";
+import { eq, desc, sql, and } from "drizzle-orm";
+import { format } from "date-fns";
+
+const user = Astro.locals.user!;
+const isAdmin = user.role === "admin" || user.role === "board";
+const db = getDb(Astro.locals.runtime.env);
+const now = new Date();
+
+const allBallots = await db.select().from(ballots).orderBy(desc(ballots.createdAt));
+
+const [{ count: totalHouseholds }] = await db
+  .select({ count: sql<number>`count(*)` })
+  .from(households)
+  .where(eq(households.isActive, true));
+
+const detailed = await Promise.all(allBallots.map(async (b) => {
+  const options = await db.select().from(ballotOptions).where(eq(ballotOptions.ballotId, b.id)).orderBy(ballotOptions.displayOrder);
+  const votes = await db.select({ optionId: householdVotes.optionId, count: sql<number>`count(*)` }).from(householdVotes).where(eq(householdVotes.ballotId, b.id)).groupBy(householdVotes.optionId);
+  const voteMap = new Map(votes.map(v => [v.optionId, v.count]));
+  const totalVotes = votes.reduce((s, v) => s + v.count, 0);
+
+  let hasVoted = false;
+  let userVote: string | null = null;
+  if (user.householdId) {
+    const [ev] = await db.select().from(householdVotes).where(and(eq(householdVotes.ballotId, b.id), eq(householdVotes.householdId, user.householdId)));
+    hasVoted = !!ev;
+    userVote = ev?.optionId ?? null;
+  }
+
+  const isClosed = b.status === "closed" || new Date(b.endsAt) < now;
+  const canSeeResults = isAdmin || isClosed || b.showResultsBeforeClose;
+  const canVote = !hasVoted && !!user.householdId && b.status === "active" && new Date(b.startsAt) <= now && new Date(b.endsAt) > now;
+
+  return { ...b, options, voteMap, totalVotes, totalHouseholds, hasVoted, userVote, canSeeResults, canVote, isClosed };
+}));
+
+const visible = isAdmin ? detailed : detailed.filter(b => b.status !== "draft");
+import Csrf from "../components/Csrf.astro";
+---
+<App title="Voting">
+  <div class="max-w-4xl">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Voting</h1>
+    </div>
+
+    {visible.length === 0 ? (
+      <div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">No ballots yet.</div>
+    ) : (
+      <div class="space-y-6">
+        {visible.map((b) => (
+          <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h3 class="font-semibold text-gray-900">{b.title}</h3>
+                <p class="text-sm text-gray-600 mt-1">{b.description}</p>
+                <p class="text-xs text-gray-400 mt-2">
+                  {format(new Date(b.startsAt), "MMM d")} – {format(new Date(b.endsAt), "MMM d, yyyy")}
+                  {b.isClosed && <span class="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Closed</span>}
+                  {b.status === "active" && !b.isClosed && <span class="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Active</span>}
+                  {b.status === "draft" && <span class="ml-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Draft</span>}
+                </p>
+              </div>
+              {b.canSeeResults && (
+                <div class="text-right text-xs text-gray-500">
+                  <p>{b.totalVotes} of {b.totalHouseholds} voted</p>
+                </div>
+              )}
+            </div>
+
+            <div class="space-y-2">
+              {b.options.map((opt) => {
+                const count = b.voteMap.get(opt.id) || 0;
+                const pct = b.totalVotes > 0 ? Math.round((count / b.totalVotes) * 100) : 0;
+                const isUserVote = b.userVote === opt.id;
+
+                return (
+                  <div class="flex items-center gap-3">
+                    {b.canVote ? (
+                      <form method="POST" action="/api/voting/cast" class="flex-1">
+        <Csrf />
+                        <input type="hidden" name="ballotId" value={b.id} />
+                        <input type="hidden" name="optionId" value={opt.id} />
+                        <button type="submit" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                          <span class="text-sm font-medium text-gray-900">{opt.optionText}</span>
+                          {opt.optionDescription && <span class="text-xs text-gray-500 ml-2">{opt.optionDescription}</span>}
+                        </button>
+                      </form>
+                    ) : (
+                      <div class="flex-1">
+                        <div class:list={["px-4 py-3 rounded-lg border", isUserVote ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-gray-50"]}>
+                          <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-900">
+                              {opt.optionText}
+                              {isUserVote && <span class="text-xs text-blue-600 ml-2">Your vote</span>}
+                            </span>
+                            {b.canSeeResults && <span class="text-sm text-gray-600">{count} ({pct}%)</span>}
+                          </div>
+                          {b.canSeeResults && b.totalVotes > 0 && (
+                            <div class="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div class="h-full bg-blue-500 rounded-full" style={`width: ${pct}%`}></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {b.hasVoted && !b.canVote && (
+              <p class="text-xs text-gray-500 mt-3">Your household has voted on this ballot.</p>
+            )}
+            {!user.householdId && b.status === "active" && (
+              <p class="text-xs text-amber-600 mt-3">You must be assigned to a household to vote.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</App>

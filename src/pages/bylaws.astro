@@ -31,7 +31,7 @@ const [currentBylaws] = await db
             <span class="text-xs text-gray-500">{currentBylaws.notes}</span>
           )}
         </div>
-        <div class="prose prose-sm max-w-none text-gray-700" set:html={currentBylaws.content} />
+        <div class="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{currentBylaws.content}</div>
       </div>
     ) : (
       <div class="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-500">

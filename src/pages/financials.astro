@@ -1,0 +1,79 @@
+---
+import App from "../layouts/App.astro";
+import { getDb } from "../lib/db";
+import { transactions, accountCategories } from "../../shared/schema";
+import { desc, eq, sql } from "drizzle-orm";
+
+const user = Astro.locals.user!;
+if (user.role !== "admin" && user.role !== "board" && user.role !== "homeowner") return Astro.redirect("/dashboard");
+
+const db = getDb(Astro.locals.runtime.env);
+const recent = await db.select({
+  id: transactions.id,
+  date: transactions.date,
+  description: transactions.description,
+  amount: transactions.amount,
+  type: transactions.type,
+  category: accountCategories.name,
+}).from(transactions)
+  .leftJoin(accountCategories, eq(transactions.categoryId, accountCategories.id))
+  .orderBy(desc(transactions.date))
+  .limit(50);
+
+const totals = await db.select({
+  type: transactions.type,
+  total: sql<number>`sum(cast(${transactions.amount} as real))`,
+}).from(transactions).groupBy(transactions.type);
+
+const income = totals.find(t => t.type === "income")?.total || 0;
+const expenses = totals.find(t => t.type === "expense")?.total || 0;
+---
+<App title="Financials">
+  <div class="max-w-4xl">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Financials</h1>
+
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-sm text-gray-500">Income</p>
+        <p class="text-2xl font-bold text-green-600 mt-1">${income.toFixed(2)}</p>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-sm text-gray-500">Expenses</p>
+        <p class="text-2xl font-bold text-red-600 mt-1">${expenses.toFixed(2)}</p>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <p class="text-sm text-gray-500">Net</p>
+        <p class:list={["text-2xl font-bold mt-1", income - expenses >= 0 ? "text-green-600" : "text-red-600"]}>
+          ${(income - expenses).toFixed(2)}
+        </p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-200">
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {recent.length === 0 ? (
+            <tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No transactions yet.</td></tr>
+          ) : recent.map((t) => (
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-sm text-gray-600">{t.date}</td>
+              <td class="px-4 py-3 text-sm text-gray-900">{t.description}</td>
+              <td class="px-4 py-3"><span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{t.category || "Uncoded"}</span></td>
+              <td class:list={["px-4 py-3 text-sm text-right font-medium", t.type === "income" ? "text-green-600" : "text-red-600"]}>
+                {t.type === "income" ? "+" : "-"}${parseFloat(t.amount).toFixed(2)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</App>

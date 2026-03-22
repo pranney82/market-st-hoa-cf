@@ -33,6 +33,7 @@ const userRsvps = await db
 
 const rsvpSet = new Set(userRsvps.map((r) => r.eventId));
 const now = new Date();
+import Csrf from "../components/Csrf.astro";
 ---
 <App title="Events">
   <div class="max-w-4xl">
@@ -65,6 +66,7 @@ const now = new Date();
 
                 {!isPast && (
                   <form method="POST" action="/api/events/rsvp">
+        <Csrf />
                     <input type="hidden" name="eventId" value={e.id} />
                     <button
                       type="submit"

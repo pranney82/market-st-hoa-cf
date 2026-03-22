@@ -28,5 +28,6 @@ interface Env {
 declare namespace App {
   interface Locals extends Runtime {
     user: import("../shared/schema").User | null;
+    csrfToken?: string;
   }
 }
