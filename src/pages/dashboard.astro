@@ -11,7 +11,7 @@ const db = getDb(Astro.locals.runtime.env);
 // Fetch everything in parallel — data arrives with the HTML
 const [recentAnnouncements, upcomingEvents, myDues] = await Promise.all([
   db.select().from(announcements).orderBy(desc(announcements.createdAt)).limit(3),
-  db.select().from(events).where(gte(events.startDateTime, new Date())).orderBy(events.startDateTime).limit(3),
+  db.select().from(events).where(gte(events.startDateTime, new Date().toISOString())).orderBy(events.startDateTime).limit(3),
   db.select().from(duesPayments).where(
     and(eq(duesPayments.userId, user.id), eq(duesPayments.status, "pending"))
   ).orderBy(duesPayments.dueDate).limit(5),
