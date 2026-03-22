@@ -16,5 +16,8 @@ export default defineConfig({
         "@shared": new URL("./shared", import.meta.url).pathname,
       },
     },
+    ssr: {
+      external: ["node:crypto"],
+    },
   },
 });
