@@ -11,6 +11,7 @@ interface Env {
   SESSION_SECRET: string;
   HELCIM_API_TOKEN: string;
   MERCURY_API_TOKEN: string;
+  RESEND_API_KEY: string;
   RESEND_FROM_EMAIL: string;
   RESEND_ADMIN_EMAIL: string;
   RESEND_BILLING_EMAIL: string;

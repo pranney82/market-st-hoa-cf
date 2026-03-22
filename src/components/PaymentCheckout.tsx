@@ -1,13 +1,57 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
   amount: number;
   userId: string;
 }
 
+declare global {
+  interface Window {
+    appendHelcimPayIframe?: (config: any) => void;
+  }
+}
+
 export default function PaymentCheckout({ amount, userId }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    // Load Helcim Pay.js script
+    if (!document.getElementById("helcim-pay-js")) {
+      const script = document.createElement("script");
+      script.id = "helcim-pay-js";
+      script.src = "https://js.helcim.com/helcim-pay/services/start.js";
+      document.head.appendChild(script);
+    }
+
+    // Listen for Helcim payment success
+    const handler = async (e: MessageEvent) => {
+      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      if (data.eventName === "helcim-pay-success") {
+        try {
+          const res = await fetch("/api/payments/complete-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transactionId: data.transactionId }),
+          });
+          if (res.ok) {
+            setSuccess(true);
+            setTimeout(() => window.location.reload(), 2000);
+          } else {
+            const err = await res.json();
+            setError(err.error || "Payment verification failed");
+          }
+        } catch {
+          setError("Failed to verify payment");
+        }
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   async function startCheckout() {
     setLoading(true);
@@ -21,14 +65,24 @@ export default function PaymentCheckout({ amount, userId }: Props) {
       });
       const data = await res.json();
 
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+      if (data.checkoutToken && window.appendHelcimPayIframe) {
+        window.appendHelcimPayIframe({ checkoutToken: data.checkoutToken });
       } else {
         setError(data.error || "Failed to initialize payment");
+        setLoading(false);
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Something went wrong");
       setLoading(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+        <p className="text-green-700 font-medium">Payment successful! Refreshing...</p>
+      </div>
+    );
   }
 
   return (
@@ -46,9 +100,7 @@ export default function PaymentCheckout({ amount, userId }: Props) {
           {loading ? "Processing..." : "Pay Now"}
         </button>
       </div>
-      {error && (
-        <p className="mt-3 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }
