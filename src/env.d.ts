@@ -6,6 +6,8 @@ interface Env {
   DB: D1Database;
   R2: R2Bucket;
   SESSIONS: KVNamespace;
+  EMAIL_QUEUE: Queue;
+  PAYMENT_QUEUE: Queue;
   ASSETS: Fetcher;
   BASE_URL: string;
   SESSION_SECRET: string;
@@ -15,7 +17,6 @@ interface Env {
   RESEND_FROM_EMAIL: string;
   RESEND_ADMIN_EMAIL: string;
   RESEND_BILLING_EMAIL: string;
-  RESEND_EVENTS_EMAIL: string;
   RESEND_NOTIFICATIONS_EMAIL: string;
   RESEND_REQUESTS_EMAIL: string;
   AI_INTEGRATIONS_ANTHROPIC_API_KEY: string;

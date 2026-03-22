@@ -1,10 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Offline | Market St HOA</title>
-<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb;color:#374151;text-align:center}
-.c{max-width:320px}.icon{width:64px;height:64px;background:#2563eb;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700;margin:0 auto 24px}
-h1{font-size:20px;margin:0 0 8px}p{font-size:14px;color:#6b7280;margin:0 0 24px}
-a{display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500}</style>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Offline | Market St HOA</title>
+<script>
+  if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  }
+</script>
+<style>
+  :root { --bg: #f9fafb; --text: #374151; --muted: #6b7280; --accent: #2563eb; --card: #fff; }
+  .dark { --bg: #030712; --text: #f9fafb; --muted: #9ca3af; --accent: #3b82f6; --card: #111827; }
+  body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: var(--bg); color: var(--text); text-align: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .c { max-width: 320px; padding: 20px; }
+  .icon { width: 64px; height: 64px; background: var(--accent); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; font-weight: 700; margin: 0 auto 24px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { font-size: 14px; color: var(--muted); margin: 0 0 24px; }
+  a { display: inline-block; padding: 12px 24px; background: var(--accent); color: #fff; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; }
+  a:active { opacity: 0.9; transform: scale(0.98); }
+  .wifi { width: 48px; height: 48px; margin: 0 auto 16px; color: var(--muted); }
+</style>
 </head>
-<body><div class="c"><div class="icon">M</div><h1>You're offline</h1><p>Check your connection and try again.</p><a href="/">Retry</a></div></body>
+<body>
+<div class="c">
+  <svg class="wifi" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+  </svg>
+  <div class="icon">M</div>
+  <h1>You're offline</h1>
+  <p>Check your connection and try again. Your data will sync when you're back online.</p>
+  <a href="/">Retry</a>
+</div>
+</body>
 </html>

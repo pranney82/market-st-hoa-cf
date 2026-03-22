@@ -2,6 +2,7 @@
 import Base from "./Base.astro";
 import InstallPrompt from "../components/InstallPrompt";
 import PushOptIn from "../components/PushOptIn";
+import ThemeToggle from "../components/ThemeToggle.astro";
 
 interface Props {
   title: string;
@@ -13,7 +14,6 @@ const path = Astro.url.pathname;
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: "home" },
   { href: "/payments", label: "Payments", icon: "credit-card" },
-  { href: "/events", label: "Events", icon: "calendar" },
   { href: "/announcements", label: "Announcements", icon: "megaphone" },
   { href: "/documents", label: "Documents", icon: "file-text" },
   { href: "/requests", label: "Requests", icon: "clipboard" },
@@ -31,14 +31,17 @@ const adminNav = [
 
 const isAdmin = user.role === "admin" || user.role === "board";
 ---
-<Base title={title} class="bg-gray-50 min-h-screen">
+<Base title={title} class="bg-gray-50 dark:bg-gray-950 min-h-screen">
   <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 hidden md:flex">
-      <div class="p-4 border-b border-gray-200">
+    <aside class="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0 hidden md:flex">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white text-sm font-bold">M</div>
-          <span class="font-semibold text-sm">Market St HOA</span>
+          <span class="font-semibold text-sm dark:text-white">Market St HOA</span>
+          <div class="ml-auto">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 
@@ -48,7 +51,7 @@ const isAdmin = user.role === "admin" || user.role === "board";
             href={href}
             class:list={[
               "block px-3 py-2 rounded-md text-sm transition-colors",
-              path === href ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-600 hover:bg-gray-100"
+              path === href ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
             ]}
           >
             {label}
@@ -57,13 +60,13 @@ const isAdmin = user.role === "admin" || user.role === "board";
 
         {isAdmin && (
           <>
-            <div class="pt-4 pb-1 px-3 text-xs font-medium text-gray-400 uppercase">Admin</div>
+            <div class="pt-4 pb-1 px-3 text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Admin</div>
             {adminNav.map(({ href, label }) => (
               <a
                 href={href}
                 class:list={[
                   "block px-3 py-2 rounded-md text-sm transition-colors",
-                  path === href ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-600 hover:bg-gray-100"
+                  path === href ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 ]}
               >
                 {label}
@@ -73,17 +76,17 @@ const isAdmin = user.role === "admin" || user.role === "board";
         )}
       </nav>
 
-      <div class="p-4 border-t border-gray-200">
+      <div class="p-4 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
+          <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300">
             {user.firstName?.[0]}{user.lastName?.[0]}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">{user.firstName} {user.lastName}</p>
-            <p class="text-xs text-gray-500 truncate">{user.email}</p>
+            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{user.firstName} {user.lastName}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
           </div>
         </div>
-        <a href="/settings" class="block mt-3 text-xs text-gray-500 hover:text-gray-700">Settings</a>
+        <a href="/settings" class="block mt-3 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">Settings</a>
         <PushOptIn client:idle />
         <form method="POST" action="/api/logout" class="mt-1">
           <button type="submit" class="text-xs text-red-500 hover:text-red-700">Sign out</button>

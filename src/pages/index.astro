@@ -3,11 +3,11 @@ export const prerender = true;
 import Base from "../layouts/Base.astro";
 ---
 <Base title="Welcome">
-  <div class="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+  <div class="min-h-screen bg-gradient-to-b from-blue-50 dark:from-gray-900 to-white dark:to-gray-950 flex flex-col">
     <header class="p-6 flex justify-between items-center max-w-5xl mx-auto w-full">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white text-sm font-bold">M</div>
-        <span class="font-semibold">Market St HOA</span>
+        <span class="font-semibold dark:text-white">Market St HOA</span>
       </div>
       <a href="/login" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
         Sign In
@@ -16,17 +16,17 @@ import Base from "../layouts/Base.astro";
 
     <main class="flex-1 flex items-center justify-center px-6">
       <div class="text-center max-w-2xl">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">
+        <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Your HOA, simplified
         </h1>
-        <p class="text-lg text-gray-600 mb-8">
-          Pay dues, vote on proposals, RSVP to events, and stay connected with your neighbors — all in one place.
+        <p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
+          Pay dues, vote on proposals, and stay connected with your neighbors — all in one place.
         </p>
         <div class="flex gap-4 justify-center">
           <a href="/login" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
             Sign In
           </a>
-          <a href="/register" class="px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-colors">
+          <a href="/register" class="px-6 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             Register
           </a>
         </div>

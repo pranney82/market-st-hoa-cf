@@ -1,7 +1,6 @@
 import { getDb } from "./db";
-import { duesPayments, users, households, payments, systemSettings } from "../../shared/schema";
+import { duesPayments, users, households, systemSettings } from "../../shared/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
-import { sendDuesNotificationEmail } from "./email";
 
 export async function handleScheduled(event: ScheduledEvent, env: Env) {
   const db = getDb(env);
@@ -10,8 +9,6 @@ export async function handleScheduled(event: ScheduledEvent, env: Env) {
     case "1 0 1 * *": return generateMonthlyDues(db, env);
     case "0 1 * * *": return updateOverdueDues(db);
     case "0 9 15 * *": return sendReminders(db, env);
-    case "0 2 5 * *": return console.log("[Cron] Mercury import — TODO");
-    case "0 * * * *": return settlePendingPayments(db, env);
     default: console.warn(`[Cron] Unknown: ${event.cron}`);
   }
 }
@@ -28,22 +25,30 @@ async function generateMonthlyDues(db: ReturnType<typeof getDb>, env: Env) {
   // Get all active households
   const activeHouseholds = await db.select().from(households).where(eq(households.isActive, true));
 
+  // Get all members at once instead of querying per household
+  const allMembers = await db.select().from(users).where(sql`${users.householdId} IS NOT NULL`);
+  const membersByHousehold = new Map<string, (typeof allMembers)[number][]>();
+  for (const m of allMembers) {
+    const arr = membersByHousehold.get(m.householdId!) || [];
+    arr.push(m);
+    membersByHousehold.set(m.householdId!, arr);
+  }
+
+  // Get all existing dues for this period to avoid per-household check
+  const periodStart = new Date(year, month, 1).toISOString();
+  const periodEnd = new Date(year, month + 1, 0).toISOString();
+  const dueDate = new Date(year, month, 1).toISOString();
+  const existingDues = await db.select().from(duesPayments).where(eq(duesPayments.periodStart, periodStart));
+  const existingUserIds = new Set(existingDues.map(d => d.userId));
+
   let created = 0;
   for (const household of activeHouseholds) {
-    // Get primary contact or first member
-    const members = await db.select().from(users).where(eq(users.householdId, household.id));
+    const members = membersByHousehold.get(household.id) || [];
     const primary = members.find(m => m.id === household.primaryContactId) || members[0];
     if (!primary) continue;
 
-    // Check if dues already exist for this period
-    const periodStart = new Date(year, month, 1).toISOString();
-    const periodEnd = new Date(year, month + 1, 0).toISOString();
-    const dueDate = new Date(year, month, 1).toISOString();
-
-    const [existing] = await db.select().from(duesPayments).where(
-      and(eq(duesPayments.userId, primary.id), eq(duesPayments.periodStart, periodStart))
-    );
-    if (existing) continue;
+    // Skip if dues already exist for this user and period
+    if (existingUserIds.has(primary.id)) continue;
 
     await db.insert(duesPayments).values({
       userId: primary.id,
@@ -57,9 +62,15 @@ async function generateMonthlyDues(db: ReturnType<typeof getDb>, env: Env) {
     });
     created++;
 
-    // Send notification email
+    // Queue notification email
     if (primary.email && primary.emailNotifications) {
-      await sendDuesNotificationEmail(env, primary.email, primary.firstName || "Homeowner", amount, new Date(dueDate).toLocaleDateString());
+      await env.EMAIL_QUEUE.send({
+        type: "dues_notification",
+        to: primary.email,
+        name: primary.firstName || "Homeowner",
+        amount,
+        dueDate: new Date(dueDate).toLocaleDateString(),
+      });
     }
   }
 
@@ -80,51 +91,17 @@ async function sendReminders(db: ReturnType<typeof getDb>, env: Env) {
     .innerJoin(users, eq(duesPayments.userId, users.id))
     .where(eq(duesPayments.status, "pending"));
 
-  let sent = 0;
+  let queued = 0;
   for (const { dues, user } of pending) {
     if (!user.email || !user.emailNotifications) continue;
-    await sendDuesNotificationEmail(env, user.email, user.firstName || "Homeowner", dues.amount, new Date(dues.dueDate).toLocaleDateString());
-    sent++;
+    await env.EMAIL_QUEUE.send({
+      type: "dues_reminder",
+      to: user.email,
+      name: user.firstName || "Homeowner",
+      amount: dues.amount,
+      dueDate: new Date(dues.dueDate).toLocaleDateString(),
+    });
+    queued++;
   }
-  console.log(`[Cron] Sent ${sent} reminder emails`);
-}
-
-async function settlePendingPayments(db: ReturnType<typeof getDb>, env: Env) {
-  // Find payments in "pending" status and check with Helcim if settled
-  const pendingPayments = await db.select().from(payments).where(eq(payments.status, "pending"));
-
-  for (const payment of pendingPayments) {
-    try {
-      // Check card transaction first, then bank
-      let res = await fetch(`https://api.helcim.com/v2/card-transactions/${payment.helcimTransactionId}`, {
-        headers: { accept: "application/json", "api-token": env.HELCIM_API_TOKEN },
-      });
-
-      if (!res.ok) {
-        res = await fetch(`https://api.helcim.com/v2/bank-transactions/${payment.helcimTransactionId}`, {
-          headers: { accept: "application/json", "api-token": env.HELCIM_API_TOKEN },
-        });
-      }
-
-      if (!res.ok) continue;
-
-      const tx = await res.json();
-      const settled = tx.status === "APPROVED" || tx.statusClearing === "SETTLED" || tx.statusClearing === 3;
-
-      if (settled) {
-        await db.update(payments).set({
-          status: "settled", settledAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        }).where(eq(payments.id, payment.id));
-
-        // Update linked dues to "paid"
-        await db.update(duesPayments).set({
-          status: "paid", paidDate: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        }).where(eq(duesPayments.helcimTransactionId, payment.helcimTransactionId));
-
-        console.log(`[Cron] Settled payment ${payment.id}`);
-      }
-    } catch (err) {
-      console.error(`[Cron] Error checking payment ${payment.id}:`, err);
-    }
-  }
+  console.log(`[Cron] Queued ${queued} reminder emails`);
 }

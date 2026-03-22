@@ -1,4 +1,7 @@
 import { apiHandler } from "../../../lib/api";
+import { getDb } from "../../../lib/db";
+import { duesPayments } from "../../../../shared/schema";
+import { eq, and, inArray } from "drizzle-orm";
 
 const HELCIM_API_BASE = "https://api.helcim.com/v2";
 
@@ -11,10 +14,19 @@ export const POST = apiHandler(async ({ request, locals }) => {
     return Response.json({ error: "Payment processing not configured" }, { status: 500 });
   }
 
-  const { amount } = await request.json();
-  const paymentAmount = parseFloat(amount);
-  if (isNaN(paymentAmount) || paymentAmount < 1) {
-    return Response.json({ error: "Minimum payment is $1.00" }, { status: 400 });
+  const db = getDb(env);
+
+  // Calculate amount server-side from actual pending dues
+  const pendingDues = await db.select().from(duesPayments)
+    .where(and(
+      eq(duesPayments.userId, user.id),
+      inArray(duesPayments.status, ["pending", "overdue"])
+    ));
+
+  const paymentAmount = pendingDues.reduce((sum, d) => sum + parseFloat(d.amount), 0);
+
+  if (paymentAmount < 1) {
+    return Response.json({ error: "No outstanding balance" }, { status: 400 });
   }
 
   // Initialize Helcim checkout

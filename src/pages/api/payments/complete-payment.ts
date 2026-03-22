@@ -103,6 +103,14 @@ export const POST = apiHandler(async ({ request, locals }) => {
   // Clean up KV checkout state
   await env.SESSIONS.delete(`checkout:${user.id}`);
 
+  // Queue settlement check (will retry with backoff)
+  await env.PAYMENT_QUEUE.send({
+    type: "check_settlement",
+    paymentId: paymentRecord.id,
+    transactionId: String(transactionId),
+    userId: user.id,
+  });
+
   return Response.json({
     paymentId: paymentRecord.id,
     transactionId,

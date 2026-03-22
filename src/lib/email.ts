@@ -49,10 +49,6 @@ export async function sendPasswordResetEmail(env: Env, to: string, resetLink: st
     html: wrap("Password Reset", `<p>Click below to reset your password:</p><p style="text-align:center;margin:24px 0"><a href="${resetLink}" class="btn">Reset Password</a></p><p style="font-size:13px;color:#6b7280">Expires in 1 hour.</p>`) });
 }
 
-export async function sendAnnouncementEmail(env: Env, to: string | string[], title: string, content: string) {
-  return sendEmail({ env, to, subject: `HOA: ${title}`, html: wrap(title, `<div>${content}</div>`), from: env.RESEND_NOTIFICATIONS_EMAIL });
-}
-
 export async function sendDuesNotificationEmail(env: Env, to: string, name: string, amount: string, dueDate: string) {
   return sendEmail({ env, to, subject: "Dues Posted - Market St HOA",
     html: wrap("Dues Posted", `<p>Hi ${name}, your dues of <strong>$${amount}</strong> are due by <strong>${dueDate}</strong>.</p><p style="text-align:center;margin:24px 0"><a href="${env.BASE_URL}/payments" class="btn">Pay Now</a></p>`),

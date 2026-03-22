@@ -2,32 +2,42 @@
 import App from "../layouts/App.astro";
 import { getDb } from "../lib/db";
 import { households, users } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 const user = Astro.locals.user!;
 if (user.role !== "admin" && user.role !== "board") return Astro.redirect("/dashboard");
 
 const db = getDb(Astro.locals.runtime.env);
 const allHouseholds = await db.select().from(households);
-const allMembers = await Promise.all(
-  allHouseholds.map(async (h) => {
-    const members = await db.select().from(users).where(eq(users.householdId, h.id));
-    return { ...h, members };
-  })
+const allMembers = await db.select().from(users).where(
+  sql`${users.householdId} IS NOT NULL`
 );
+
+// Group members by household
+const membersByHousehold = new Map<string, typeof allMembers>();
+for (const m of allMembers) {
+  const arr = membersByHousehold.get(m.householdId!) || [];
+  arr.push(m);
+  membersByHousehold.set(m.householdId!, arr);
+}
+
+const householdsWithMembers = allHouseholds.map(h => ({
+  ...h,
+  members: membersByHousehold.get(h.id) || [],
+}));
 ---
 <App title="Households">
   <div class="max-w-4xl">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Households</h1>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Households</h1>
     <div class="space-y-4">
-      {allMembers.map((h) => (
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
+      {householdsWithMembers.map((h) => (
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <h3 class="font-semibold text-gray-900">{h.address}</h3>
-              {h.unitNumber && <span class="text-sm text-gray-500 ml-2">Unit {h.unitNumber}</span>}
+              <h3 class="font-semibold text-gray-900 dark:text-white">{h.address}</h3>
+              {h.unitNumber && <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">Unit {h.unitNumber}</span>}
             </div>
-            <span class:list={["text-xs font-medium px-2 py-1 rounded-full", h.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"]}>
+            <span class:list={["text-xs font-medium px-2 py-1 rounded-full", h.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"]}>
               {h.isActive ? "Active" : "Inactive"}
             </span>
           </div>
@@ -38,14 +48,14 @@ const allMembers = await Promise.all(
                   <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-700">
                     {m.firstName?.[0]}{m.lastName?.[0]}
                   </div>
-                  <span class="text-gray-900">{m.firstName} {m.lastName}</span>
-                  <span class="text-gray-400">{m.email}</span>
-                  <span class:list={["text-xs px-1.5 py-0.5 rounded", m.role === "admin" ? "bg-purple-100 text-purple-600" : m.role === "board" ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"]}>{m.role}</span>
+                  <span class="text-gray-900 dark:text-white">{m.firstName} {m.lastName}</span>
+                  <span class="text-gray-400 dark:text-gray-500">{m.email}</span>
+                  <span class:list={["text-xs px-1.5 py-0.5 rounded", m.role === "admin" ? "bg-purple-100 text-purple-600" : m.role === "board" ? "bg-blue-100 text-blue-600" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"]}>{m.role}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p class="text-sm text-gray-400">No members assigned</p>
+            <p class="text-sm text-gray-400 dark:text-gray-500">No members assigned</p>
           )}
         </div>
       ))}

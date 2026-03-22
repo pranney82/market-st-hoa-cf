@@ -56,12 +56,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response.headers.append("Set-Cookie", cookie);
 
     // ── Security headers ──────────────────────────────────────
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("X-Frame-Options", "SAMEORIGIN");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     response.headers.set("Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.helcim.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.helcim.com; frame-src https://checkout.helcim.com; frame-ancestors 'self'"
     );
 
     return response;

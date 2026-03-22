@@ -26,14 +26,32 @@ bucket_name = "marketst-hoa-files"
 binding = "SESSIONS"
 id = "52c11eb22743403ca2b41668352b762b"
 
+# Queues
+[[queues.producers]]
+queue = "hoa-email-queue"
+binding = "EMAIL_QUEUE"
+
+[[queues.producers]]
+queue = "hoa-payment-queue"
+binding = "PAYMENT_QUEUE"
+
+[[queues.consumers]]
+queue = "hoa-email-queue"
+max_batch_size = 10
+max_retries = 3
+
+[[queues.consumers]]
+queue = "hoa-payment-queue"
+max_batch_size = 5
+max_retries = 5
+max_batch_timeout = 30
+
 # Cron Triggers
 [triggers]
 crons = [
   "1 0 1 * *",
   "0 1 * * *",
   "0 9 15 * *",
-  "0 2 5 * *",
-  "0 * * * *",
 ]
 
 [observability]

@@ -2,7 +2,7 @@
   "name": "HOA Portal - Market Street",
   "short_name": "HOA Portal",
   "description": "Homeowners Association management portal for Market Street community",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
@@ -65,24 +65,21 @@
       "short_name": "Pay",
       "description": "Make a payment",
       "url": "/payments",
-      "icons": [
-        {
-          "src": "/icons/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "Events",
-      "short_name": "Events",
-      "description": "View community events",
-      "url": "/events",
-      "icons": [
-        {
-          "src": "/icons/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "name": "Documents",
+      "short_name": "Docs",
+      "description": "View community documents",
+      "url": "/documents",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Voting",
+      "short_name": "Vote",
+      "description": "Cast your vote",
+      "url": "/voting",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]
 }

@@ -1,17 +1,16 @@
 ---
 import App from "../layouts/App.astro";
 import { getDb } from "../lib/db";
-import { announcements, events, duesPayments } from "../../shared/schema";
-import { eq, desc, gte, and } from "drizzle-orm";
+import { announcements, duesPayments } from "../../shared/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { format } from "date-fns";
 
 const user = Astro.locals.user!;
 const db = getDb(Astro.locals.runtime.env);
 
 // Fetch everything in parallel — data arrives with the HTML
-const [recentAnnouncements, upcomingEvents, myDues] = await Promise.all([
+const [recentAnnouncements, myDues] = await Promise.all([
   db.select().from(announcements).orderBy(desc(announcements.createdAt)).limit(3),
-  db.select().from(events).where(gte(events.startDateTime, new Date().toISOString())).orderBy(events.startDateTime).limit(3),
   db.select().from(duesPayments).where(
     and(eq(duesPayments.userId, user.id), eq(duesPayments.status, "pending"))
   ).orderBy(duesPayments.dueDate).limit(5),
@@ -22,71 +21,41 @@ const totalOwed = myDues.reduce((sum, d) => sum + parseFloat(d.amount), 0);
 ---
 <App title="Dashboard">
   <div class="max-w-5xl">
-    <h1 class="text-2xl font-bold text-gray-900 mb-1">Welcome back, {user.firstName}</h1>
-    <p class="text-sm text-gray-500 mb-8">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back, {user.firstName}</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-8">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <p class="text-sm text-gray-500">Balance Due</p>
-        <p class="text-2xl font-bold text-gray-900 mt-1">${totalOwed.toFixed(2)}</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Balance Due</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${totalOwed.toFixed(2)}</p>
         {totalOwed > 0 && <a href="/payments" class="text-sm text-blue-600 hover:underline mt-2 inline-block">Pay now</a>}
       </div>
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <p class="text-sm text-gray-500">Upcoming Events</p>
-        <p class="text-2xl font-bold text-gray-900 mt-1">{upcomingEvents.length}</p>
-        <a href="/events" class="text-sm text-blue-600 hover:underline mt-2 inline-block">View all</a>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <p class="text-sm text-gray-500">Pending Dues</p>
-        <p class="text-2xl font-bold text-gray-900 mt-1">{myDues.length}</p>
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Pending Dues</p>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{myDues.length}</p>
         <a href="/payments" class="text-sm text-blue-600 hover:underline mt-2 inline-block">View details</a>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Announcements -->
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="font-semibold text-gray-900">Announcements</h2>
-          <a href="/announcements" class="text-sm text-blue-600 hover:underline">View all</a>
-        </div>
-        {recentAnnouncements.length === 0 ? (
-          <p class="text-sm text-gray-500">No announcements yet.</p>
-        ) : (
-          <div class="space-y-3">
-            {recentAnnouncements.map((a) => (
-              <div class="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                <p class="text-sm font-medium text-gray-900">{a.title}</p>
-                <p class="text-xs text-gray-500 mt-1">{format(new Date(a.createdAt!), "MMM d, yyyy")}</p>
-              </div>
-            ))}
-          </div>
-        )}
+    <!-- Announcements -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-semibold text-gray-900 dark:text-white">Announcements</h2>
+        <a href="/announcements" class="text-sm text-blue-600 hover:underline">View all</a>
       </div>
-
-      <!-- Upcoming Events -->
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="font-semibold text-gray-900">Upcoming Events</h2>
-          <a href="/events" class="text-sm text-blue-600 hover:underline">View all</a>
+      {recentAnnouncements.length === 0 ? (
+        <p class="text-sm text-gray-500 dark:text-gray-400">No announcements yet.</p>
+      ) : (
+        <div class="space-y-3">
+          {recentAnnouncements.map((a) => (
+            <div class="border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0 last:pb-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">{a.title}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{format(new Date(a.createdAt!), "MMM d, yyyy")}</p>
+            </div>
+          ))}
         </div>
-        {upcomingEvents.length === 0 ? (
-          <p class="text-sm text-gray-500">No upcoming events.</p>
-        ) : (
-          <div class="space-y-3">
-            {upcomingEvents.map((e) => (
-              <div class="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                <p class="text-sm font-medium text-gray-900">{e.title}</p>
-                <p class="text-xs text-gray-500 mt-1">
-                  {format(new Date(e.startDateTime), "MMM d 'at' h:mm a")}
-                  {e.location && <span> · {e.location}</span>}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   </div>
 </App>

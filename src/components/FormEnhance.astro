@@ -1,0 +1,30 @@
+---
+// Progressive enhancement: adds loading states to all forms
+// Disables submit buttons and shows spinner on form submission
+---
+<script is:inline>
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    const buttons = form.querySelectorAll('button[type="submit"], button:not([type])');
+    buttons.forEach((btn) => {
+      if (btn instanceof HTMLButtonElement) {
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.dataset.originalText = originalText || '';
+        btn.innerHTML = `<span class="inline-flex items-center gap-2"><svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${originalText}</span>`;
+      }
+    });
+
+    // Re-enable after 10 seconds as safety net
+    setTimeout(() => {
+      buttons.forEach((btn) => {
+        if (btn instanceof HTMLButtonElement) {
+          btn.disabled = false;
+          btn.textContent = btn.dataset.originalText || '';
+        }
+      });
+    }, 10000);
+  });
+</script>
