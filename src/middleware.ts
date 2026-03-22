@@ -14,7 +14,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const isPublic = PUBLIC_PATHS.includes(path) || PUBLIC_API.includes(path);
 
   // ── CSRF validation on all POSTs (except public APIs) ─────────
-  if (request.method === "POST" && !PUBLIC_API.includes(path)) {
+  if (request.method === "POST" && !PUBLIC_API.includes(path) && env.SESSION_SECRET) {
     const valid = await validateCsrf(request, env.SESSION_SECRET);
     if (!valid && !isPublic) {
       if (isApi) {
@@ -47,7 +47,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // ── Generate CSRF token for pages ─────────────────────────────
-  if (!isApi && request.method === "GET") {
+  if (!isApi && request.method === "GET" && env.SESSION_SECRET) {
     const { token, cookie } = await generateCsrfToken(env.SESSION_SECRET);
     locals.csrfToken = token;
     const response = await next();
