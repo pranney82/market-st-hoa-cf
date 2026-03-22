@@ -1,5 +1,6 @@
 ---
 import App from "../layouts/App.astro";
+import Csrf from "../components/Csrf.astro";
 import { getDb } from "../lib/db";
 import { ballots, ballotOptions, householdVotes, households } from "../../shared/schema";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -39,7 +40,6 @@ const detailed = await Promise.all(allBallots.map(async (b) => {
 }));
 
 const visible = isAdmin ? detailed : detailed.filter(b => b.status !== "draft");
-import Csrf from "../components/Csrf.astro";
 ---
 <App title="Voting">
   <div class="max-w-4xl">

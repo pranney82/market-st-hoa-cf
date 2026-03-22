@@ -1,5 +1,6 @@
 ---
 import App from "../layouts/App.astro";
+import Csrf from "../components/Csrf.astro";
 import { getDb } from "../lib/db";
 import { events, eventRsvps } from "../../shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -33,7 +34,6 @@ const userRsvps = await db
 
 const rsvpSet = new Set(userRsvps.map((r) => r.eventId));
 const now = new Date();
-import Csrf from "../components/Csrf.astro";
 ---
 <App title="Events">
   <div class="max-w-4xl">

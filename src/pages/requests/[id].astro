@@ -1,5 +1,6 @@
 ---
 import App from "../../layouts/App.astro";
+import Csrf from "../../components/Csrf.astro";
 import { getDb } from "../../lib/db";
 import { architecturalRequests, requestComments, users } from "../../../shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -26,7 +27,6 @@ const comments = await db
 
 const statusColors: Record<string, string> = { pending: "bg-yellow-100 text-yellow-700", approved: "bg-green-100 text-green-700", denied: "bg-red-100 text-red-700" };
 const success = Astro.url.searchParams.get("success");
-import Csrf from "../components/Csrf.astro";
 ---
 <App title={req.title}>
   <div class="max-w-3xl">
