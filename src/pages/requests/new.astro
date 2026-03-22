@@ -2,7 +2,7 @@
 import App from "../../layouts/App.astro";
 const user = Astro.locals.user!;
 const error = Astro.url.searchParams.get("error");
-import Csrf from "../components/Csrf.astro";
+import Csrf from "../../components/Csrf.astro";
 ---
 <App title="New Request">
   <div class="max-w-2xl">

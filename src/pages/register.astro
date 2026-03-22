@@ -1,7 +1,8 @@
 ---
 import Base from "../layouts/Base.astro";
-const error = Astro.url.searchParams.get("error");
 import Csrf from "../components/Csrf.astro";
+
+const error = Astro.url.searchParams.get("error");
 ---
 <Base title="Register">
   <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
