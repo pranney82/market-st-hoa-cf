@@ -10,13 +10,20 @@ export const POST = apiHandler(async ({ request, locals }) => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const env = locals.runtime.env;
-  const { transactionId } = await request.json();
+  const { transactionId, secretToken } = await request.json();
+  if (!transactionId) return Response.json({ error: "Transaction ID required" }, { status: 400 });
 
   // Retrieve checkout state from KV
   const raw = await env.SESSIONS.get(`checkout:${user.id}`);
   if (!raw) return Response.json({ error: "Payment session expired" }, { status: 400 });
 
-  const { amount: sessionAmount } = JSON.parse(raw);
+  const session = JSON.parse(raw);
+  const sessionAmount = session.amount;
+
+  // Verify the secretToken matches what was set during checkout initialization
+  if (!session.secretToken || session.secretToken !== secretToken) {
+    return Response.json({ error: "Invalid payment session" }, { status: 403 });
+  }
 
   // Verify transaction with Helcim (try card first, then bank/ACH)
   let transaction: any;

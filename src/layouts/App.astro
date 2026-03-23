@@ -1,8 +1,9 @@
 ---
 import Base from "./Base.astro";
+import Toast from "../components/Toast.astro";
+import FormEnhance from "../components/FormEnhance.astro";
 import InstallPrompt from "../components/InstallPrompt";
 import PushOptIn from "../components/PushOptIn";
-import ThemeToggle from "../components/ThemeToggle.astro";
 
 interface Props {
   title: string;
@@ -10,11 +11,12 @@ interface Props {
 const { title } = Astro.props;
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
+const isAdmin = user.role === "admin" || user.role === "board";
+const vapidPublicKey = Astro.locals.runtime.env.VAPID_PUBLIC_KEY || "";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: "home" },
   { href: "/payments", label: "Payments", icon: "credit-card" },
-  { href: "/announcements", label: "Announcements", icon: "megaphone" },
   { href: "/documents", label: "Documents", icon: "file-text" },
   { href: "/requests", label: "Requests", icon: "clipboard" },
   { href: "/bylaws", label: "Bylaws", icon: "book" },
@@ -25,81 +27,539 @@ const nav = [
 const adminNav = [
   { href: "/households", label: "Households", icon: "building" },
   { href: "/financials", label: "Financials", icon: "bar-chart" },
-  { href: "/admin/accounts", label: "Accounts", icon: "layers" },
   { href: "/admin/users", label: "Users", icon: "shield" },
 ];
 
-const isAdmin = user.role === "admin" || user.role === "board";
+function isActive(href: string) {
+  if (href === "/dashboard") return path === "/" || path === "/dashboard";
+  return path === href || path.startsWith(href + "/");
+}
+
+const allNav = [...nav, ...adminNav, { href: "/settings", label: "Settings", icon: "settings" }];
+const activeIndex = allNav.findIndex(n => isActive(n.href));
 ---
-<Base title={title} class="bg-gray-50 dark:bg-gray-950 min-h-screen">
-  <div class="flex min-h-screen">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0 hidden md:flex">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white text-sm font-bold">M</div>
-          <span class="font-semibold text-sm dark:text-white">Market St HOA</span>
-          <div class="ml-auto">
-            <ThemeToggle />
-          </div>
+<Base title={title} class="bg-gray-50 min-h-screen">
+  <!-- Mobile backdrop -->
+  <div
+    id="sidebar-backdrop"
+    class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300 md:hidden"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Sidebar -->
+  <aside
+    id="sidebar"
+    class="sidebar fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-gray-200/80 will-change-transform"
+    data-active-index={activeIndex}
+    role="navigation"
+  >
+    <!-- Header -->
+    <div class="sidebar-header flex items-center h-16 shrink-0 border-b border-gray-100">
+      <a href="/dashboard" class="flex items-center gap-3 group flex-1 min-w-0">
+        <div class="sidebar-logo w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm shadow-blue-600/20 group-hover:shadow-md group-hover:shadow-blue-600/25 transition-shadow shrink-0">
+          M
         </div>
-      </div>
+        <div class="sidebar-label overflow-hidden">
+          <span class="font-semibold text-gray-900 text-sm block truncate">Market St HOA</span>
+          <p class="text-[11px] text-gray-400 -mt-0.5 truncate">Homeowners Portal</p>
+        </div>
+      </a>
+      <!-- Close button (mobile only) -->
+      <button
+        id="sidebar-close"
+        class="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mr-1 shrink-0"
+        aria-label="Close sidebar"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <!-- Collapse toggle (desktop only) -->
+      <button
+        id="sidebar-collapse"
+        class="hidden md:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mr-1 shrink-0"
+        aria-label="Collapse sidebar"
+      >
+        <svg class="w-5 h-5 transition-transform duration-300" id="collapse-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        </svg>
+      </button>
+    </div>
 
-      <nav class="flex-1 p-3 space-y-1">
-        {nav.map(({ href, label }) => (
-          <a
-            href={href}
-            class:list={[
-              "block px-3 py-2 rounded-md text-sm transition-colors",
-              path === href ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-            ]}
-          >
-            {label}
-          </a>
-        ))}
-
-        {isAdmin && (
-          <>
-            <div class="pt-4 pb-1 px-3 text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Admin</div>
-            {adminNav.map(({ href, label }) => (
+    <!-- Navigation -->
+    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 overscroll-contain" aria-label="Main navigation">
+      <ul class="space-y-1 relative" role="list" id="nav-list">
+        {nav.map(({ href, label, icon }, i) => {
+          const active = isActive(href);
+          return (
+            <li>
               <a
                 href={href}
                 class:list={[
-                  "block px-3 py-2 rounded-md text-sm transition-colors",
-                  path === href ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  "nav-item group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative",
+                  active
+                    ? "text-blue-700 bg-blue-50/80"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 ]}
+                aria-current={active ? "page" : undefined}
+                data-nav-index={i}
               >
-                {label}
+                {active && <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 rounded-r-full" />}
+                <span class:list={[
+                  "nav-icon flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 shrink-0",
+                  active
+                    ? "bg-blue-100/80 text-blue-600"
+                    : "text-gray-400 group-hover:text-gray-600 group-hover:bg-gray-100"
+                ]}>
+                  {icon === "home" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>}
+                  {icon === "credit-card" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg>}
+                  {icon === "file-text" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>}
+                  {icon === "clipboard" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15a2.25 2.25 0 0 1 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>}
+                  {icon === "book" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>}
+                  {icon === "vote" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>}
+                  {icon === "users" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>}
+                </span>
+                <span class="sidebar-label truncate">{label}</span>
               </a>
-            ))}
+            </li>
+          );
+        })}
+
+        {isAdmin && (
+          <>
+            <li class="pt-4 pb-1 px-3" aria-hidden="true">
+              <p class="sidebar-label text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Admin</p>
+              <div class="sidebar-collapsed-divider hidden w-9 h-px bg-gray-200 mx-auto"></div>
+            </li>
+            {adminNav.map(({ href, label, icon }, i) => {
+              const active = isActive(href);
+              const navIndex = nav.length + i;
+              return (
+                <li>
+                  <a
+                    href={href}
+                    class:list={[
+                      "nav-item group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative",
+                      active
+                        ? "text-blue-700 bg-blue-50/80"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    ]}
+                    aria-current={active ? "page" : undefined}
+                    data-nav-index={navIndex}
+                  >
+                    {active && <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 rounded-r-full" />}
+                    <span class:list={[
+                      "nav-icon flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 shrink-0",
+                      active
+                        ? "bg-blue-100/80 text-blue-600"
+                        : "text-gray-400 group-hover:text-gray-600 group-hover:bg-gray-100"
+                    ]}>
+                      {icon === "building" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5M3.75 3v18h6V12h4.5v9h6V3H3.75Z" /></svg>}
+                      {icon === "bar-chart" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>}
+                      {icon === "shield" && <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg>}
+                    </span>
+                    <span class="sidebar-label truncate">{label}</span>
+                  </a>
+                </li>
+              );
+            })}
           </>
         )}
-      </nav>
+      </ul>
+    </nav>
 
-      <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300">
-            {user.firstName?.[0]}{user.lastName?.[0]}
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{user.firstName} {user.lastName}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-          </div>
+    <!-- Footer -->
+    <div class="border-t border-gray-100 p-3 shrink-0 space-y-1">
+      <PushOptIn client:idle vapidPublicKey={vapidPublicKey} />
+      <a
+        href="/settings"
+        class:list={[
+          "nav-item group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative",
+          isActive("/settings")
+            ? "text-blue-700 bg-blue-50/80"
+            : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+        ]}
+      >
+        {isActive("/settings") && <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-600 rounded-r-full" />}
+        <span class:list={[
+          "nav-icon flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 shrink-0",
+          isActive("/settings") ? "bg-blue-100/80 text-blue-600" : "text-gray-400 group-hover:text-gray-600 group-hover:bg-gray-100"
+        ]}>
+          <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+        </span>
+        <span class="sidebar-label truncate">Settings</span>
+      </a>
+
+      <!-- User profile -->
+      <div class="sidebar-user flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-default">
+        <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-sm shadow-blue-600/20">
+          {user.firstName?.[0]}{user.lastName?.[0]}
         </div>
-        <a href="/settings" class="block mt-3 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">Settings</a>
-        <PushOptIn client:idle />
-        <form method="POST" action="/api/logout" class="mt-1">
-          <button type="submit" class="text-xs text-red-500 hover:text-red-700">Sign out</button>
-        </form>
+        <div class="sidebar-label flex-1 min-w-0 overflow-hidden">
+          <p class="text-sm font-medium text-gray-900 truncate">{user.firstName} {user.lastName}</p>
+          <p class="text-[11px] text-gray-400 truncate">{user.email}</p>
+        </div>
       </div>
-    </aside>
 
-    <!-- Main content -->
-    <main class="flex-1 p-6 overflow-y-auto">
+      <a
+        href="/cdn-cgi/access/logout"
+        class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+      >
+        <span class="nav-icon flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 group-hover:text-red-500 group-hover:bg-red-100/60 transition-all duration-200 shrink-0">
+          <svg class="w-[20px] h-[20px]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+          </svg>
+        </span>
+        <span class="sidebar-label truncate">Sign out</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Mobile header bar -->
+  <header id="mobile-header" class="fixed top-0 inset-x-0 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 z-30 flex items-center px-4 md:hidden" style="height: calc(3.5rem + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px);">
+    <button
+      id="sidebar-open"
+      class="p-2 -ml-2 rounded-xl text-gray-600 hover:bg-gray-100 active:scale-95 transition-all"
+      aria-label="Open menu"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    </button>
+    <div class="flex items-center gap-2.5 ml-3">
+      <div class="w-7 h-7 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm shadow-blue-600/20">M</div>
+      <span class="font-semibold text-gray-900 text-sm">Market St HOA</span>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main id="main-content" class="main-content min-h-screen">
+    <div class="p-4 md:p-6 lg:p-8 max-w-5xl">
       <slot />
-    </main>
-  </div>
+    </div>
+  </main>
 
-  <!-- PWA install prompt (React island, loads after idle) -->
+  <Toast />
+  <FormEnhance />
   <InstallPrompt client:idle />
+
+  <style>
+    /* ---- Sidebar core dimensions & transitions ---- */
+    :root {
+      --sidebar-w: 272px;
+      --sidebar-w-collapsed: 72px;
+      --sidebar-duration: 280ms;
+      --sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar {
+      width: var(--sidebar-w);
+      transform: translateX(-100%);
+      transition: width var(--sidebar-duration) var(--sidebar-ease),
+                  transform var(--sidebar-duration) var(--sidebar-ease);
+      overscroll-behavior: contain;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Desktop: sidebar always visible */
+    @media (min-width: 768px) {
+      .sidebar {
+        transform: translateX(0);
+      }
+      .main-content {
+        padding-left: var(--sidebar-w);
+        transition: padding-left var(--sidebar-duration) var(--sidebar-ease);
+      }
+    }
+
+    /* Mobile: open state */
+    .sidebar.mobile-open {
+      transform: translateX(0);
+    }
+
+    /* Mobile: top padding for header (h-14 + safe-area) */
+    @media (max-width: 767px) {
+      .main-content {
+        padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+    }
+
+    /* ---- Collapsed state (desktop only) ---- */
+    .sidebar.collapsed {
+      width: var(--sidebar-w-collapsed);
+    }
+    .sidebar.collapsed ~ .main-content {
+      padding-left: var(--sidebar-w-collapsed);
+    }
+
+    /* Header adjustments when collapsed */
+    .sidebar .sidebar-header {
+      padding: 0 12px 0 16px;
+      transition: padding var(--sidebar-duration) var(--sidebar-ease);
+    }
+    .sidebar.collapsed .sidebar-header {
+      padding: 0 8px;
+      justify-content: center;
+    }
+
+    /* Logo adjustments */
+    .sidebar .sidebar-logo {
+      transition: width var(--sidebar-duration) var(--sidebar-ease),
+                  height var(--sidebar-duration) var(--sidebar-ease),
+                  border-radius var(--sidebar-duration) var(--sidebar-ease);
+    }
+    .sidebar.collapsed .sidebar-logo {
+      width: 40px;
+      height: 40px;
+    }
+
+    /* Labels: fade + slide out when collapsed */
+    .sidebar .sidebar-label {
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity calc(var(--sidebar-duration) * 0.6) var(--sidebar-ease),
+                  transform calc(var(--sidebar-duration) * 0.6) var(--sidebar-ease);
+      white-space: nowrap;
+    }
+    .sidebar.collapsed .sidebar-label {
+      opacity: 0;
+      transform: translateX(-8px);
+      pointer-events: none;
+      width: 0;
+      overflow: hidden;
+    }
+
+    /* Nav items center when collapsed */
+    .sidebar.collapsed .nav-item {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    /* Active pill hides when collapsed (tooltip takes over) */
+    .sidebar.collapsed .active-pill {
+      opacity: 0;
+    }
+
+    /* Admin divider in collapsed mode */
+    .sidebar.collapsed .sidebar-collapsed-divider {
+      display: block;
+    }
+
+    /* Collapse toggle icon rotation */
+    .sidebar.collapsed #collapse-icon {
+      transform: rotate(180deg);
+    }
+    .sidebar.collapsed #sidebar-collapse {
+      margin-right: 0;
+    }
+
+    /* User profile in collapsed mode */
+    .sidebar.collapsed .sidebar-user {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    /* ---- Tooltips for collapsed mode ---- */
+    .sidebar.collapsed .nav-item {
+      position: relative;
+    }
+    .sidebar.collapsed .nav-item::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%) scale(0.96);
+      background: #1f2937;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms, transform 150ms;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .sidebar.collapsed .nav-item:hover::after {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+
+    /* ---- Nav item hover micro-interactions ---- */
+    .nav-item .nav-icon {
+      transition: transform 200ms var(--sidebar-ease),
+                  background-color 200ms,
+                  color 200ms;
+    }
+    .nav-item:hover .nav-icon {
+      transform: scale(1.05);
+    }
+    .nav-item:active .nav-icon {
+      transform: scale(0.95);
+    }
+
+    /* ---- Keyboard focus styles ---- */
+    .nav-item:focus-visible {
+      outline: 2px solid #3b82f6;
+      outline-offset: -2px;
+      border-radius: 12px;
+    }
+
+    /* ---- Scrollbar styling ---- */
+    .sidebar nav::-webkit-scrollbar {
+      width: 4px;
+    }
+    .sidebar nav::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .sidebar nav::-webkit-scrollbar-thumb {
+      background: #e5e7eb;
+      border-radius: 4px;
+    }
+    .sidebar nav:hover::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+    }
+  </style>
+
+  <script is:inline>
+    (function() {
+      var sidebar = document.getElementById('sidebar');
+      var backdrop = document.getElementById('sidebar-backdrop');
+      var openBtn = document.getElementById('sidebar-open');
+      var closeBtn = document.getElementById('sidebar-close');
+      var collapseBtn = document.getElementById('sidebar-collapse');
+      var mainContent = document.getElementById('main-content');
+      var STORAGE_KEY = 'sidebar-collapsed';
+      var isMobile = function() { return window.innerWidth < 768; };
+
+      // --- Tooltips: set data-tooltip from label text ---
+      sidebar.querySelectorAll('.nav-item').forEach(function(item) {
+        var label = item.querySelector('.sidebar-label');
+        if (label) item.setAttribute('data-tooltip', label.textContent.trim());
+      });
+
+      // --- Collapse state (desktop) ---
+      var collapsed = localStorage.getItem(STORAGE_KEY) === 'true';
+      if (collapsed && !isMobile()) {
+        sidebar.classList.add('collapsed');
+      }
+
+      function toggleCollapse() {
+        collapsed = !collapsed;
+        sidebar.classList.toggle('collapsed', collapsed);
+        localStorage.setItem(STORAGE_KEY, collapsed);
+      }
+
+      if (collapseBtn) collapseBtn.addEventListener('click', toggleCollapse);
+
+      // --- Mobile open/close ---
+      function openMobile() {
+        sidebar.classList.add('mobile-open');
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100');
+        document.body.style.overflow = 'hidden';
+        // Temporarily uncollapse for mobile view
+        sidebar.classList.remove('collapsed');
+      }
+
+      function closeMobile() {
+        sidebar.classList.remove('mobile-open');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        backdrop.classList.remove('opacity-100');
+        document.body.style.overflow = '';
+        // Restore collapsed state
+        if (collapsed) sidebar.classList.add('collapsed');
+      }
+
+      if (openBtn) openBtn.addEventListener('click', openMobile);
+      if (closeBtn) closeBtn.addEventListener('click', closeMobile);
+      if (backdrop) backdrop.addEventListener('click', closeMobile);
+
+      // Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) {
+          closeMobile();
+        }
+      });
+
+      // --- Swipe to open/close on mobile ---
+      var touchStartX = 0;
+      var touchStartY = 0;
+      var touchCurrentX = 0;
+      var swiping = false;
+      var SWIPE_EDGE = 30; // px from left edge to start
+      var SWIPE_THRESHOLD = 60; // px to commit
+
+      document.addEventListener('touchstart', function(e) {
+        var touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchCurrentX = touchStartX;
+
+        // Only allow swipe-open from left edge
+        if (!sidebar.classList.contains('mobile-open') && touchStartX < SWIPE_EDGE) {
+          swiping = true;
+        }
+        // Allow swipe-close from anywhere when open
+        if (sidebar.classList.contains('mobile-open')) {
+          swiping = true;
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function(e) {
+        if (!swiping) return;
+        var touch = e.touches[0];
+        // If vertical scroll is dominant, cancel swipe
+        if (Math.abs(touch.clientY - touchStartY) > Math.abs(touch.clientX - touchStartX) * 1.5) {
+          swiping = false;
+          return;
+        }
+        touchCurrentX = touch.clientX;
+      }, { passive: true });
+
+      document.addEventListener('touchend', function() {
+        if (!swiping) return;
+        swiping = false;
+        var dx = touchCurrentX - touchStartX;
+
+        if (!sidebar.classList.contains('mobile-open') && dx > SWIPE_THRESHOLD) {
+          openMobile();
+        } else if (sidebar.classList.contains('mobile-open') && dx < -SWIPE_THRESHOLD) {
+          closeMobile();
+        }
+      }, { passive: true });
+
+      // --- Keyboard navigation within sidebar ---
+      var navItems = sidebar.querySelectorAll('.nav-item');
+      sidebar.addEventListener('keydown', function(e) {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        var focused = document.activeElement;
+        var index = Array.prototype.indexOf.call(navItems, focused);
+        if (index === -1) return;
+
+        if (e.key === 'ArrowDown' && index < navItems.length - 1) {
+          navItems[index + 1].focus();
+        } else if (e.key === 'ArrowUp' && index > 0) {
+          navItems[index - 1].focus();
+        }
+      });
+
+      // --- Handle resize: clean up mobile state ---
+      window.addEventListener('resize', function() {
+        if (!isMobile() && sidebar.classList.contains('mobile-open')) {
+          closeMobile();
+        }
+      });
+    })();
+  </script>
 </Base>

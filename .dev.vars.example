@@ -1,4 +1,6 @@
-SESSION_SECRET=generate-a-64-char-random-string
+# Set to "dev" to bypass CF Access in local development (auto-logs in as first admin user)
+CF_ACCESS_TEAM_DOMAIN=dev
+CF_ACCESS_AUD=your-app-aud-tag
 HELCIM_API_TOKEN=avMTnW0f14lSsJsOelPA...
 MERCURY_API_TOKEN=secret-token:mercury_production_wma_...
 RESEND_FROM_EMAIL=noreply@comms.marketstreethoa.com

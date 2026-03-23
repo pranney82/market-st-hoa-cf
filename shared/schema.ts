@@ -33,9 +33,8 @@ export const users = sqliteTable("users", {
   emergencyContactName: text("emergency_contact_name"), emergencyContactPhone: text("emergency_contact_phone"),
   emergencyContactIsSpouse: integer("emergency_contact_is_spouse", { mode: "boolean" }).default(false),
   kids: text("kids"), pets: text("pets"), // JSON arrays as text
-  localPasswordHash: text("local_password_hash"),
+
   emailNotifications: integer("email_notifications", { mode: "boolean" }).default(true),
-  announcementNotifications: integer("announcement_notifications", { mode: "boolean" }).default(true),
   autopayEnabled: integer("autopay_enabled", { mode: "boolean" }).default(false),
   autopayMethod: text("autopay_method"), autopayCardToken: text("autopay_card_token"),
   autopayCardLast4: text("autopay_card_last4"), autopayCardType: text("autopay_card_type"), autopayCardExpiry: text("autopay_card_expiry"),
@@ -51,24 +50,6 @@ export const users = sqliteTable("users", {
   index("users_member_status_idx").on(t.memberStatus),
 ]);
 
-export const passwordResetTokens = sqliteTable("password_reset_tokens", {
-  id: id(), userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tokenHash: text("token_hash").notNull(), expiresAt: text("expires_at").notNull(),
-  used: integer("used", { mode: "boolean" }).default(false), ...ts,
-});
-
-export const invitations = sqliteTable("invitations", {
-  id: id(), email: text("email").notNull(), token: text("token").notNull().unique(),
-  invitedBy: text("invited_by").notNull().references(() => users.id, { onDelete: "cascade" }),
-  status: text("status").notNull().default("pending"), expiresAt: text("expires_at").notNull(),
-  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()), completedAt: text("completed_at"),
-});
-
-export const announcements = sqliteTable("announcements", {
-  id: id(), title: text("title").notNull(), content: text("content").notNull(),
-  createdBy: text("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
-  priority: text("priority").notNull().default("normal"), ...ts,
-});
 
 export const documents = sqliteTable("documents", {
   id: id(), fileName: text("file_name").notNull(), fileSize: text("file_size").notNull(),
@@ -239,14 +220,10 @@ export const updateUserProfileSchema = z.object({
   emergencyContactName: z.string().optional(), emergencyContactPhone: z.string().optional(),
   emergencyContactIsSpouse: z.boolean().optional(), kids: z.array(z.string()).optional(), pets: z.array(z.string()).optional(),
 });
-export const updateNotificationPreferencesSchema = z.object({ emailNotifications: z.boolean(), announcementNotifications: z.boolean() });
-export const changePasswordSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) });
+export const updateNotificationPreferencesSchema = z.object({ emailNotifications: z.boolean() });
 export const updateMemberStatusSchema = z.object({ memberStatus: z.enum(["active", "inactive", "archived", "deceased"]), departureNotes: z.string().optional() });
-export const createInvitationSchema = z.object({ email: z.string().email() });
-export const completeProfileSchema = z.object({ token: z.string(), address: z.string().min(1), phoneNumber: z.string(), emergencyContact: z.string().optional(), kids: z.string().optional(), pets: z.string().optional() });
 export const insertHouseholdSchema = createInsertSchema(households).omit({ id: true, createdAt: true, updatedAt: true });
 export const updateHouseholdSchema = z.object({ address: z.string().min(1).optional(), unitNumber: z.string().optional(), primaryContactId: z.string().optional(), notes: z.string().optional(), isActive: z.boolean().optional(), movingStatus: z.enum(["active", "moving_out", "moved"]).nullable().optional(), movingDate: z.string().nullable().optional() });
-export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true }).extend({ category: z.enum(documentCategories), tags: z.array(z.string()).optional(), description: z.string().optional(), isPublic: z.boolean().optional() });
 export const updateDocumentSchema = insertDocumentSchema.partial().omit({ fileSize: true, mimeType: true, storagePath: true, uploadedBy: true });
 export const insertBylawsSchema = createInsertSchema(bylaws).omit({ id: true, createdAt: true, updatedAt: true });
@@ -259,7 +236,6 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Household = typeof households.$inferSelect;
 export type InsertHousehold = z.infer<typeof insertHouseholdSchema>;
 export type UpdateHousehold = z.infer<typeof updateHouseholdSchema>;
-export type Announcement = typeof announcements.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type ArchitecturalRequest = typeof architecturalRequests.$inferSelect;
 export type RequestComment = typeof requestComments.$inferSelect;
@@ -275,8 +251,6 @@ export type Ballot = typeof ballots.$inferSelect;
 export type BallotOption = typeof ballotOptions.$inferSelect;
 export type HouseholdVote = typeof householdVotes.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
-export type Invitation = typeof invitations.$inferSelect;
-export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 export function formatPosition(position: UserPosition): string {
   if (!position) return "";

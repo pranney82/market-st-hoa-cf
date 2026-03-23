@@ -61,5 +61,5 @@ export const POST = apiHandler(async ({ request, locals }) => {
     { expirationTtl: 1800 }
   );
 
-  return Response.json({ checkoutToken: data.checkoutToken, amount: paymentAmount });
+  return Response.json({ checkoutToken: data.checkoutToken, secretToken: data.secretToken, amount: paymentAmount });
 });

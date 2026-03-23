@@ -1,12 +1,18 @@
 import { useState, useEffect } from "react";
 
-export default function PushOptIn() {
+interface Props {
+  vapidPublicKey: string;
+}
+
+export default function PushOptIn({ vapidPublicKey }: Props) {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [subscribed, setSubscribed] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
     setPermission(Notification.permission);
+    setReady(true);
     // Check if already subscribed
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();
@@ -23,10 +29,7 @@ export default function PushOptIn() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          // VAPID public key — generate with: npx web-push generate-vapid-keys
-          "REPLACE_WITH_VAPID_PUBLIC_KEY"
-        ),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
 
       // Send subscription to server
@@ -42,8 +45,7 @@ export default function PushOptIn() {
     }
   }
 
-  if (subscribed || permission === "denied") return null;
-  if (!("Notification" in window)) return null;
+  if (!ready || subscribed || permission === "denied" || !vapidPublicKey) return null;
 
   return (
     <button

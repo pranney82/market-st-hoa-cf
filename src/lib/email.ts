@@ -1,3 +1,5 @@
+import { sanitize } from "./sanitize";
+
 interface EmailOpts {
   env: Env;
   to: string | string[];
@@ -44,25 +46,36 @@ body{font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0}
 </div></body></html>`;
 }
 
-export async function sendPasswordResetEmail(env: Env, to: string, resetLink: string) {
-  return sendEmail({ env, to, subject: "Reset Your Password - Market St HOA",
-    html: wrap("Password Reset", `<p>Click below to reset your password:</p><p style="text-align:center;margin:24px 0"><a href="${resetLink}" class="btn">Reset Password</a></p><p style="font-size:13px;color:#6b7280">Expires in 1 hour.</p>`) });
+export async function sendWelcomeEmail(env: Env, to: string, name: string) {
+  const s = sanitize(name);
+  return sendEmail({ env, to, subject: "Welcome to Market St HOA",
+    html: wrap("Welcome!", `<p>Hi ${s}, your account has been set up for the Market Street HOA portal.</p><p style="text-align:center;margin:24px 0"><a href="${env.BASE_URL}" class="btn">Visit Portal</a></p><p style="font-size:13px;color:#6b7280">You'll sign in with a one-time code sent to this email.</p>`) });
 }
 
 export async function sendDuesNotificationEmail(env: Env, to: string, name: string, amount: string, dueDate: string) {
+  const s = sanitize(name);
+  const a = sanitize(amount);
+  const d = sanitize(dueDate);
   return sendEmail({ env, to, subject: "Dues Posted - Market St HOA",
-    html: wrap("Dues Posted", `<p>Hi ${name}, your dues of <strong>$${amount}</strong> are due by <strong>${dueDate}</strong>.</p><p style="text-align:center;margin:24px 0"><a href="${env.BASE_URL}/payments" class="btn">Pay Now</a></p>`),
+    html: wrap("Dues Posted", `<p>Hi ${s}, your dues of <strong>$${a}</strong> are due by <strong>${d}</strong>.</p><p style="text-align:center;margin:24px 0"><a href="${env.BASE_URL}/payments" class="btn">Pay Now</a></p>`),
     from: env.RESEND_BILLING_EMAIL });
 }
 
 export async function sendPaymentReceiptEmail(env: Env, to: string, name: string, amount: string, method: string) {
+  const s = sanitize(name);
+  const a = sanitize(amount);
+  const m = sanitize(method);
   return sendEmail({ env, to, subject: "Payment Received - Market St HOA",
-    html: wrap("Payment Received", `<p>Hi ${name}, we received your payment of <strong>$${amount}</strong> via ${method}.</p>`),
+    html: wrap("Payment Received", `<p>Hi ${s}, we received your payment of <strong>$${a}</strong> via ${m}.</p>`),
     from: env.RESEND_BILLING_EMAIL });
 }
 
 export async function sendRequestStatusEmail(env: Env, to: string, name: string, title: string, status: string, notes?: string) {
-  return sendEmail({ env, to, subject: `Request ${status}: ${title}`,
-    html: wrap(`Request ${status.charAt(0).toUpperCase() + status.slice(1)}`, `<p>Hi ${name}, your request "<strong>${title}</strong>" was <strong>${status}</strong>.</p>${notes ? `<p>Notes: ${notes}</p>` : ""}`),
+  const sName = sanitize(name);
+  const sTitle = sanitize(title);
+  const sStatus = sanitize(status);
+  const sNotes = notes ? sanitize(notes) : "";
+  return sendEmail({ env, to, subject: `Request ${sStatus}: ${sTitle}`,
+    html: wrap(`Request ${sStatus.charAt(0).toUpperCase() + sStatus.slice(1)}`, `<p>Hi ${sName}, your request "<strong>${sTitle}</strong>" was <strong>${sStatus}</strong>.</p>${sNotes ? `<p>Notes: ${sNotes}</p>` : ""}`),
     from: env.RESEND_REQUESTS_EMAIL });
 }

@@ -10,7 +10,8 @@ interface Env {
   PAYMENT_QUEUE: Queue;
   ASSETS: Fetcher;
   BASE_URL: string;
-  SESSION_SECRET: string;
+  CF_ACCESS_TEAM_DOMAIN: string;
+  CF_ACCESS_AUD: string;
   HELCIM_API_TOKEN: string;
   MERCURY_API_TOKEN: string;
   RESEND_API_KEY: string;
@@ -21,6 +22,8 @@ interface Env {
   RESEND_REQUESTS_EMAIL: string;
   AI_INTEGRATIONS_ANTHROPIC_API_KEY: string;
   AI_INTEGRATIONS_ANTHROPIC_BASE_URL: string;
+  VAPID_PUBLIC_KEY: string;
+  VAPID_PRIVATE_KEY: string;
   WEBSHARE_PROXY_HOST: string;
   WEBSHARE_PROXY_PORT: string;
   WEBSHARE_PROXY_USER: string;
@@ -30,6 +33,5 @@ interface Env {
 declare namespace App {
   interface Locals extends Runtime {
     user: import("../shared/schema").User | null;
-    csrfToken?: string;
   }
 }

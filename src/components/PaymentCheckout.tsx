@@ -78,28 +78,28 @@ export default function PaymentCheckout({ amount: initialAmount, userId }: Props
 
   if (success) {
     return (
-      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-5 text-center">
-        <p className="text-green-700 dark:text-green-300 font-medium">Payment successful! Refreshing...</p>
+      <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+        <p className="text-green-700 font-medium">Payment successful! Refreshing...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-      <div className="flex items-center justify-between">
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Total Balance Due</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">${initialAmount.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Total Balance Due</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">${initialAmount.toFixed(2)}</p>
         </div>
         <button
           onClick={startCheckout}
           disabled={loading}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {loading ? "Processing..." : "Pay Now"}
         </button>
       </div>
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

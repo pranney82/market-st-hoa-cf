@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { payments, duesPayments } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { sendDuesNotificationEmail, sendPaymentReceiptEmail } from "./email";
 
 export interface EmailMessage {
@@ -75,13 +75,14 @@ export async function handlePaymentQueue(batch: MessageBatch<PaymentMessage>, en
       const settled = tx.status === "APPROVED" || tx.statusClearing === "SETTLED" || tx.statusClearing === 3;
 
       if (settled) {
+        // Idempotent: only update if still in pending state
         await db.update(payments).set({
           status: "settled", settledAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        }).where(eq(payments.id, paymentId));
+        }).where(and(eq(payments.id, paymentId), eq(payments.status, "pending")));
 
         await db.update(duesPayments).set({
           status: "paid", paidDate: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        }).where(eq(duesPayments.helcimTransactionId, transactionId));
+        }).where(and(eq(duesPayments.helcimTransactionId, transactionId), eq(duesPayments.status, "payment_pending")));
 
         console.log(`[Queue] Settled payment ${paymentId}`);
         msg.ack();

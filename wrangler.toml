@@ -21,7 +21,7 @@ database_id = "1df37fc1-3f59-41ed-a5b0-eaf4b92c44ce" # Set after: wrangler d1 cr
 binding = "R2"
 bucket_name = "marketst-hoa-files"
 
-# KV (Sessions)
+# KV (rate limiting, checkout state, push subscriptions)
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "52c11eb22743403ca2b41668352b762b"

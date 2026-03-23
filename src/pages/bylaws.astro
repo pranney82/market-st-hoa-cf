@@ -15,7 +15,7 @@ const [currentBylaws] = await db
 ---
 <App title="Bylaws">
   <div class="max-w-4xl">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Community Bylaws</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Community Bylaws</h1>
 
     <!-- React island: AI chat (only JS on this page) -->
     <div class="mb-6">
@@ -24,17 +24,17 @@ const [currentBylaws] = await db
 
     <!-- Server-rendered bylaws content: zero JS -->
     {currentBylaws ? (
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div class="bg-white rounded-xl border border-gray-200 p-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="font-semibold text-gray-900 dark:text-white">Version {currentBylaws.version}</h2>
+          <h2 class="font-semibold text-gray-900">Version {currentBylaws.version}</h2>
           {currentBylaws.notes && (
-            <span class="text-xs text-gray-500 dark:text-gray-400">{currentBylaws.notes}</span>
+            <span class="text-xs text-gray-500">{currentBylaws.notes}</span>
           )}
         </div>
-        <div class="prose prose-sm max-w-none text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{currentBylaws.content}</div>
+        <div class="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{currentBylaws.content}</div>
       </div>
     ) : (
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400">
+      <div class="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-500">
         No bylaws have been published yet.
       </div>
     )}

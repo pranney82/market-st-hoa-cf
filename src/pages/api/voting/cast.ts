@@ -24,6 +24,14 @@ export const POST = formHandler(async ({ request, locals, redirect }) => {
   const [existing] = await db.select().from(householdVotes).where(and(eq(householdVotes.ballotId, ballotId), eq(householdVotes.householdId, user.householdId)));
   if (existing) return redirect("/voting");
 
-  await db.insert(householdVotes).values({ ballotId, householdId: user.householdId, optionId, votedBy: user.id });
+  try {
+    await db.insert(householdVotes).values({ ballotId, householdId: user.householdId, optionId, votedBy: user.id });
+  } catch (err: any) {
+    // Handle race condition: UNIQUE constraint means household already voted
+    if (err?.message?.includes("UNIQUE constraint failed")) {
+      return redirect("/voting");
+    }
+    throw err;
+  }
   return redirect("/voting");
 }, "/voting");

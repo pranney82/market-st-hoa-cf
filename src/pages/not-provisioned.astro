@@ -1,0 +1,26 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Not Provisioned">
+  <div class="min-h-screen bg-white flex items-center justify-center px-6">
+    <div class="text-center max-w-md">
+      <div class="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+        <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-900 mb-3">Account Not Found</h1>
+      <p class="text-gray-500 mb-8 leading-relaxed">
+        Your email was verified by Cloudflare Access, but you don't have an account in the HOA portal yet. Please contact your HOA board to get set up.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="/cdn-cgi/access/logout" class="px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+          Sign out
+        </a>
+        <a href="/" class="px-6 py-3 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
+          Back to home
+        </a>
+      </div>
+    </div>
+  </div>
+</Base>

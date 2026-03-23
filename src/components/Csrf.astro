@@ -1,5 +1,0 @@
----
-// Renders a hidden CSRF input for form protection
-const token = Astro.locals.csrfToken || "";
----
-<input type="hidden" name="_csrf" value={token} />
