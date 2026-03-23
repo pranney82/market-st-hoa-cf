@@ -1,13 +1,18 @@
 ---
 import App from "../layouts/App.astro";
 import PaymentCheckout from "../components/PaymentCheckout";
+import AutopaySetup from "../components/AutopaySetup";
 import { getDb } from "../lib/db";
-import { duesPayments } from "../../shared/schema";
+import { duesPayments, systemSettings } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { format } from "date-fns";
 
 const user = Astro.locals.user!;
 const db = getDb(Astro.locals.runtime.env);
+
+// Get dues amount for autopay display
+const [duesSetting] = await db.select().from(systemSettings).where(eq(systemSettings.key, "monthly_dues_amount"));
+const monthlyDuesAmount = parseFloat(duesSetting?.value || "150");
 
 const dues = await db
   .select()
@@ -36,6 +41,11 @@ const statusColors: Record<string, string> = {
         <PaymentCheckout client:load amount={totalOwed} userId={user.id} />
       </div>
     )}
+
+    {/* Autopay */}
+    <div class="mb-6">
+      <AutopaySetup client:load isEnabled={user.autopayEnabled ?? false} duesAmount={monthlyDuesAmount} />
+    </div>
 
     <!-- Pending Dues -->
     {pending.length > 0 && (

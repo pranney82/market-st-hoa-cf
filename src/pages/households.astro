@@ -34,7 +34,7 @@ const householdsWithMembers = allHouseholds.map(h => ({
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <h3 class="font-semibold text-gray-900">{h.address}</h3>
+              <h3 class="font-semibold text-gray-900 truncate">{h.address}</h3>
               {h.unitNumber && <span class="text-sm text-gray-500 ml-2">Unit {h.unitNumber}</span>}
             </div>
             <span class:list={["text-xs font-medium px-2 py-1 rounded-full", h.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"]}>

@@ -55,6 +55,7 @@ export async function getUserByEmail(db: Db, email: string) {
 
 function getCookie(request: Request, name: string): string | null {
   const cookie = request.headers.get("Cookie") || "";
-  const match = cookie.match(new RegExp(`${name}=([^;]+)`));
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
   return match?.[1] ?? null;
 }

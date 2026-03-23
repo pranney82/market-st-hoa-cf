@@ -1,23 +1,52 @@
 import { formHandler } from "../../../lib/api";
 import { getDb } from "../../../lib/db";
 import { sanitize } from "../../../lib/sanitize";
-import { architecturalRequests } from "../../../../shared/schema";
+import { rateLimit } from "../../../lib/rate-limit";
+import { audit } from "../../../lib/audit";
+import { architecturalRequests, createRequestSchema } from "../../../../shared/schema";
 
 export const POST = formHandler(async ({ request, locals, redirect }) => {
   const user = locals.user!;
-  const form = await request.formData();
-  const title = sanitize((form.get("title") as string)?.trim() || "");
-  const description = sanitize((form.get("description") as string)?.trim() || "");
-  const requestType = (form.get("requestType") as string) || "architectural";
+  const env = locals.runtime.env;
 
-  if (!title || !description || description.length < 10) {
-    return redirect("/requests/new?error=Title and description (10+ chars) required");
+  // Rate limit: 10 requests per hour
+  const rl = await rateLimit(env.SESSIONS, `create-request:${user.id}`, 10, 3600);
+  if (!rl.allowed) return new Response("Too many requests", { status: 429 });
+
+  // Household check: user must belong to a household
+  if (!user.householdId) {
+    return redirect("/requests/new?error=You must be assigned to a household to submit requests");
   }
 
-  const db = getDb(locals.runtime.env);
+  const form = await request.formData();
+  const parsed = createRequestSchema.safeParse({
+    title: (form.get("title") as string)?.trim(),
+    description: (form.get("description") as string)?.trim(),
+    requestType: form.get("requestType") as string,
+  });
+
+  if (!parsed.success) {
+    const msg = parsed.error.errors.map(e => e.message).join(". ");
+    return redirect(`/requests/new?error=${encodeURIComponent(msg)}`);
+  }
+
+  const { title, description, requestType } = parsed.data;
+
+  const db = getDb(env);
   const [req] = await db.insert(architecturalRequests).values({
-    requestType, title, description, submittedBy: user.id, householdId: user.householdId,
+    requestType,
+    title: sanitize(title),
+    description: sanitize(description),
+    submittedBy: user.id,
+    householdId: user.householdId,
   }).returning();
+
+  await audit(env, request, user, {
+    action: "request.create",
+    resourceType: "request",
+    resourceId: req.id,
+    details: { title, requestType },
+  });
 
   return redirect(`/requests/${req.id}`);
 }, "/requests/new");

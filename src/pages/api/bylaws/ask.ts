@@ -2,7 +2,7 @@ import { apiHandler } from "../../../lib/api";
 import { getDb } from "../../../lib/db";
 import { rateLimit, rateLimitResponse } from "../../../lib/rate-limit";
 import { getClientIp } from "../../../lib/sanitize";
-import { bylaws } from "../../../../shared/schema";
+import { bylaws, bylawsAskSchema } from "../../../../shared/schema";
 import { eq, desc } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -11,13 +11,18 @@ export const POST = apiHandler(async ({ request, locals }) => {
   const user = locals.user;
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Rate limit: 10 questions per hour
+  // Rate limit: 10 questions per hour per IP
   const ip = getClientIp(request);
   const rl = await rateLimit(env.SESSIONS, `bylaws:${ip}`, 10, 3600);
   if (!rl.allowed) return rateLimitResponse(rl.resetAt);
 
-  const { question } = await request.json();
-  if (!question?.trim()) return Response.json({ error: "Question is required" }, { status: 400 });
+  const body = await request.json();
+  const parsed = bylawsAskSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json({ error: parsed.error.errors[0].message }, { status: 400 });
+  }
+
+  const { question } = parsed.data;
 
   const db = getDb(env);
   const [current] = await db.select().from(bylaws).where(eq(bylaws.isCurrent, true)).orderBy(desc(bylaws.createdAt)).limit(1);
@@ -29,6 +34,6 @@ export const POST = apiHandler(async ({ request, locals }) => {
     messages: [{ role: "user", content: `You are a helpful HOA assistant. Answer ONLY from the bylaws below. Be concise.\n\nBYLAWS:\n${current.content}\n\nQUESTION:\n${question}` }],
   });
 
-  const answer = message.content.filter(b => b.type === "text").map((b: any) => b.text).join("\n");
+  const answer = message.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map(b => b.text).join("\n");
   return Response.json({ answer });
 });

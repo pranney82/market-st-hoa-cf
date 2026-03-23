@@ -11,7 +11,7 @@ export function apiHandler(handler: Handler): APIRoute {
       console.error(`[API Error] ${context.url.pathname}:`, error);
 
       // D1 unique constraint violation
-      if ((error as any)?.message?.includes("UNIQUE constraint failed")) {
+      if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
         return Response.json({ message: "A record with that value already exists" }, { status: 409 });
       }
 

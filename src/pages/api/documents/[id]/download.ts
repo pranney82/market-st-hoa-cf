@@ -16,7 +16,11 @@ export const GET = apiHandler(async ({ params, locals }) => {
   const object = await r2.get(key);
   if (!object) return Response.json({ message: "File not found in storage" }, { status: 404 });
 
+  const safeFilename = encodeURIComponent(doc.fileName).replace(/['()]/g, escape);
   return new Response(object.body, {
-    headers: { "Content-Type": doc.mimeType, "Content-Disposition": `attachment; filename="${doc.fileName}"` },
+    headers: {
+      "Content-Type": doc.mimeType,
+      "Content-Disposition": `attachment; filename*=UTF-8''${safeFilename}`,
+    },
   });
 });

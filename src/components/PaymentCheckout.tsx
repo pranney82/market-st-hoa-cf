@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface Props {
   amount: number;
@@ -7,7 +7,7 @@ interface Props {
 
 declare global {
   interface Window {
-    appendHelcimPayIframe?: (config: any) => void;
+    appendHelcimPayIframe?: (config: { checkoutToken: string }) => void;
   }
 }
 
@@ -15,6 +15,7 @@ export default function PaymentCheckout({ amount: initialAmount, userId }: Props
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const secretTokenRef = useRef("");
 
   useEffect(() => {
     if (!document.getElementById("helcim-pay-js")) {
@@ -25,13 +26,16 @@ export default function PaymentCheckout({ amount: initialAmount, userId }: Props
     }
 
     const handler = async (e: MessageEvent) => {
-      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      let data: Record<string, unknown>;
+      try {
+        data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      } catch { return; }
       if (data.eventName === "helcim-pay-success") {
         try {
           const res = await fetch("/api/payments/complete-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transactionId: data.transactionId }),
+            body: JSON.stringify({ transactionId: data.transactionId, secretToken: secretTokenRef.current }),
           });
           if (res.ok) {
             setSuccess(true);
@@ -65,6 +69,7 @@ export default function PaymentCheckout({ amount: initialAmount, userId }: Props
       const data = await res.json();
 
       if (data.checkoutToken && window.appendHelcimPayIframe) {
+        secretTokenRef.current = data.secretToken || "";
         window.appendHelcimPayIframe({ checkoutToken: data.checkoutToken });
       } else {
         setError(data.error || "Failed to initialize payment");

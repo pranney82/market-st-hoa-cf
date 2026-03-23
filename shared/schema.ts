@@ -39,6 +39,8 @@ export const users = sqliteTable("users", {
   autopayMethod: text("autopay_method"), autopayCardToken: text("autopay_card_token"),
   autopayCardLast4: text("autopay_card_last4"), autopayCardType: text("autopay_card_type"), autopayCardExpiry: text("autopay_card_expiry"),
   autopayBankToken: text("autopay_bank_token"), autopayBankLast4: text("autopay_bank_last4"), autopayBankName: text("autopay_bank_name"), autopayBankType: text("autopay_bank_type"),
+  helcimCustomerCode: text("helcim_customer_code"), // Helcim customer ID for recurring
+  helcimSubscriptionId: integer("helcim_subscription_id"), // Helcim recurring subscription ID
   householdId: text("household_id").references(() => households.id, { onDelete: "set null" }),
   movingStatus: text("moving_status"), movingDate: text("moving_date"),
   memberStatus: text("member_status").notNull().default("active"),
@@ -150,6 +152,7 @@ export const transactions = sqliteTable("transactions", {
 }, (t) => [
   index("transactions_date_idx").on(t.date),
   index("transactions_category_id_idx").on(t.categoryId),
+  index("transactions_reference_idx").on(t.reference),
 ]);
 
 export const budgets = sqliteTable("budgets", {
@@ -207,6 +210,23 @@ export const systemSettings = sqliteTable("system_settings", {
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });
 
+export const auditLogs = sqliteTable("audit_logs", {
+  id: id(),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  userEmail: text("user_email"),
+  action: text("action").notNull(), // e.g. "user.create", "request.approve", "vote.cast"
+  resourceType: text("resource_type").notNull(), // e.g. "user", "request", "payment", "vote"
+  resourceId: text("resource_id"),
+  details: text("details"), // JSON string with action-specific context
+  ipAddress: text("ip_address"),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+}, (t) => [
+  index("audit_logs_user_id_idx").on(t.userId),
+  index("audit_logs_action_idx").on(t.action),
+  index("audit_logs_resource_type_idx").on(t.resourceType),
+  index("audit_logs_created_at_idx").on(t.createdAt),
+]);
+
 // ── Zod Schemas ─────────────────────────────────────────────────
 export const upsertUserSchema = createInsertSchema(users).omit({ createdAt: true, updatedAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ createdAt: true, updatedAt: true }).partial({ id: true });
@@ -251,6 +271,57 @@ export type Ballot = typeof ballots.$inferSelect;
 export type BallotOption = typeof ballotOptions.$inferSelect;
 export type HouseholdVote = typeof householdVotes.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ── API Input Validation Schemas ────────────────────────────────
+export const createRequestSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  description: z.string().min(10, "Description must be at least 10 characters").max(5000, "Description too long"),
+  requestType: z.enum(["architectural", "general", "contract_change", "bylaw_update"]).default("architectural"),
+});
+
+export const reviewRequestSchema = z.object({
+  requestId: z.string().uuid("Invalid request ID"),
+  status: z.enum(["approved", "denied"], { message: "Status must be approved or denied" }),
+  reviewNotes: z.string().max(2000, "Notes too long").optional().default(""),
+});
+
+export const commentRequestSchema = z.object({
+  requestId: z.string().uuid("Invalid request ID"),
+  comment: z.string().min(1, "Comment is required").max(2000, "Comment too long"),
+});
+
+export const castVoteSchema = z.object({
+  ballotId: z.string().uuid("Invalid ballot ID"),
+  optionId: z.string().uuid("Invalid option ID"),
+});
+
+export const createUserSchema = z.object({
+  email: z.string().email("Invalid email format").max(255),
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
+  role: z.enum(["admin", "board", "homeowner"]).default("homeowner"),
+  householdId: z.string().uuid().nullable().optional(),
+  sendWelcome: z.boolean().default(false),
+});
+
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  phoneNumber: z.string().max(20).optional(),
+});
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({
+    p256dh: z.string().min(1),
+    auth: z.string().min(1),
+  }),
+});
+
+export const bylawsAskSchema = z.object({
+  question: z.string().min(1, "Question is required").max(1000, "Question too long"),
+});
 
 export function formatPosition(position: UserPosition): string {
   if (!position) return "";

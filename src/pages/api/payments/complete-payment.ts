@@ -1,15 +1,33 @@
 import { apiHandler } from "../../../lib/api";
 import { getDb } from "../../../lib/db";
+import { rateLimit } from "../../../lib/rate-limit";
 import { payments, paymentApplications, duesPayments } from "../../../../shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 const HELCIM_API_BASE = "https://api.helcim.com/v2";
+
+interface HelcimTransaction {
+  status?: string;
+  statusAuth?: number | string;
+  statusClearing?: string | number;
+  cardToken?: string;
+  cardNumber?: string;
+  cardType?: string;
+  bankToken?: string;
+  bankAccountNumber?: string;
+  bankName?: string;
+}
 
 export const POST = apiHandler(async ({ request, locals }) => {
   const user = locals.user;
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const env = locals.runtime.env;
+
+  // Rate limit: 10 completions per hour
+  const rl = await rateLimit(env.SESSIONS, `complete-payment:${user.id}`, 10, 3600);
+  if (!rl.allowed) return Response.json({ error: "Too many requests" }, { status: 429 });
+
   const { transactionId, secretToken } = await request.json();
   if (!transactionId) return Response.json({ error: "Transaction ID required" }, { status: 400 });
 
@@ -26,7 +44,7 @@ export const POST = apiHandler(async ({ request, locals }) => {
   }
 
   // Verify transaction with Helcim (try card first, then bank/ACH)
-  let transaction: any;
+  let transaction: HelcimTransaction;
   let isACH = false;
 
   let verifyRes = await fetch(`${HELCIM_API_BASE}/card-transactions/${transactionId}`, {
@@ -45,7 +63,7 @@ export const POST = apiHandler(async ({ request, locals }) => {
   } else {
     transaction = await verifyRes.json();
     if (transaction.status !== "APPROVED") return Response.json({ error: "Payment not approved" }, { status: 400 });
-    isACH = !transaction.cardToken && (transaction.bankToken || transaction.bankAccountNumber);
+    isACH = !transaction.cardToken && !!(transaction.bankToken || transaction.bankAccountNumber);
   }
 
   const paymentMethod = isACH ? "ach" : "card";
@@ -68,9 +86,9 @@ export const POST = apiHandler(async ({ request, locals }) => {
     notes: `Online payment - ${paymentMethod.toUpperCase()}`,
   }).returning();
 
-  // Apply payment to oldest pending dues
+  // Apply payment to oldest pending/overdue dues (oldest first)
   const pendingDues = await db.select().from(duesPayments)
-    .where(and(eq(duesPayments.userId, user.id), eq(duesPayments.status, "pending")))
+    .where(and(eq(duesPayments.userId, user.id), inArray(duesPayments.status, ["pending", "overdue"])))
     .orderBy(duesPayments.dueDate);
 
   let remaining = sessionAmount;
@@ -117,6 +135,17 @@ export const POST = apiHandler(async ({ request, locals }) => {
     transactionId: String(transactionId),
     userId: user.id,
   });
+
+  // Queue payment receipt email
+  if (user.email && user.emailNotifications) {
+    await env.EMAIL_QUEUE.send({
+      type: "payment_receipt",
+      to: user.email,
+      name: user.firstName || "Homeowner",
+      amount: sessionAmount.toFixed(2),
+      method: paymentMethod === "ach" ? "ACH bank transfer" : "credit card",
+    });
+  }
 
   return Response.json({
     paymentId: paymentRecord.id,

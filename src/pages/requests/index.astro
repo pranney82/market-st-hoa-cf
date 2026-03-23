@@ -2,19 +2,32 @@
 import App from "../../layouts/App.astro";
 import { getDb } from "../../lib/db";
 import { architecturalRequests, users } from "../../../shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { format } from "date-fns";
+import { parsePagination } from "../../lib/pagination";
 
 const user = Astro.locals.user!;
 const isAdmin = user.role === "admin" || user.role === "board";
 const db = getDb(Astro.locals.runtime.env);
 
+// Pagination
+const { page, pageSize } = parsePagination(Astro.url);
+
+// Count
+const condition = isAdmin ? undefined : eq(architecturalRequests.submittedBy, user.id);
+const [{ total }] = condition
+  ? await db.select({ total: count() }).from(architecturalRequests).where(condition)
+  : await db.select({ total: count() }).from(architecturalRequests);
+
+const totalPages = Math.ceil(total / pageSize);
+
+// Query
+const baseQuery = db.select({ req: architecturalRequests, submitter: { firstName: users.firstName, lastName: users.lastName } })
+  .from(architecturalRequests).leftJoin(users, eq(architecturalRequests.submittedBy, users.id));
+
 const all = isAdmin
-  ? await db.select({ req: architecturalRequests, submitter: { firstName: users.firstName, lastName: users.lastName } })
-      .from(architecturalRequests).leftJoin(users, eq(architecturalRequests.submittedBy, users.id)).orderBy(desc(architecturalRequests.createdAt))
-  : await db.select({ req: architecturalRequests, submitter: { firstName: users.firstName, lastName: users.lastName } })
-      .from(architecturalRequests).leftJoin(users, eq(architecturalRequests.submittedBy, users.id))
-      .where(eq(architecturalRequests.submittedBy, user.id)).orderBy(desc(architecturalRequests.createdAt));
+  ? await baseQuery.orderBy(desc(architecturalRequests.createdAt)).limit(pageSize).offset((page - 1) * pageSize)
+  : await baseQuery.where(eq(architecturalRequests.submittedBy, user.id)).orderBy(desc(architecturalRequests.createdAt)).limit(pageSize).offset((page - 1) * pageSize);
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
@@ -32,7 +45,7 @@ const typeLabels: Record<string, string> = {
   <div class="max-w-4xl">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Requests</h1>
-      <a href="/requests/new" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+      <a href="/requests/new" class="px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
         New Request
       </a>
     </div>
@@ -61,6 +74,27 @@ const typeLabels: Record<string, string> = {
           </a>
         ))}
       </div>
+    )}
+
+    {/* Pagination */}
+    {totalPages > 1 && (
+      <nav class="flex items-center justify-between mt-6" aria-label="Pagination">
+        <p class="text-sm text-gray-500">
+          Page {page} of {totalPages}
+        </p>
+        <div class="flex gap-2">
+          {page > 1 && (
+            <a href={`/requests?page=${page - 1}&pageSize=${pageSize}`} class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Previous
+            </a>
+          )}
+          {page < totalPages && (
+            <a href={`/requests?page=${page + 1}&pageSize=${pageSize}`} class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Next
+            </a>
+          )}
+        </div>
+      </nav>
     )}
   </div>
 </App>

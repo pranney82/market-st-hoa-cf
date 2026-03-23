@@ -83,7 +83,7 @@ const members = await db.select().from(users).where(eq(users.memberStatus, "acti
                 </span>
               </div>
               {isAdmin && m.address && (
-                <p class="text-xs text-gray-500 pl-[52px]">{m.address}</p>
+                <p class="text-xs text-gray-500 pl-[52px] truncate">{m.address}</p>
               )}
             </div>
           ))}

@@ -1,5 +1,6 @@
 import { apiHandler } from "../../../lib/api";
 import { getDb } from "../../../lib/db";
+import { rateLimit } from "../../../lib/rate-limit";
 import { duesPayments } from "../../../../shared/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
@@ -10,6 +11,11 @@ export const POST = apiHandler(async ({ request, locals }) => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const env = locals.runtime.env;
+
+  // Rate limit: 10 checkouts per hour
+  const rl = await rateLimit(env.SESSIONS, `init-checkout:${user.id}`, 10, 3600);
+  if (!rl.allowed) return Response.json({ error: "Too many requests" }, { status: 429 });
+
   if (!env.HELCIM_API_TOKEN) {
     return Response.json({ error: "Payment processing not configured" }, { status: 500 });
   }

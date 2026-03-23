@@ -11,10 +11,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const path = url.pathname;
   const isApi = path.startsWith("/api/");
 
+  // ── Generate CSP nonce for this request ───────────────────────
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = btoa(String.fromCharCode(...nonceBytes));
+  locals.nonce = nonce;
+
   // ── Public paths ────────────────────────────────────────────────
   if (PUBLIC_PATHS.includes(path)) {
     locals.user = null;
-    return addSecurityHeaders(await next());
+    return await addSecurityHeaders(await next(), nonce);
   }
 
   // ── Dev bypass (wrangler dev has no CF Access in front) ─────────
@@ -23,7 +29,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const devUser = await getUserByEmail(db, "peterranney@gmail.com");
     if (devUser) {
       locals.user = devUser;
-      return addSecurityHeaders(await next());
+      return await addSecurityHeaders(await next(), nonce);
     }
   }
 
@@ -54,19 +60,33 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  return addSecurityHeaders(await next());
+  return await addSecurityHeaders(await next(), nonce);
 });
 
-function addSecurityHeaders(response: Response): Response {
-  response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "SAMEORIGIN");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  response.headers.set("Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.helcim.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.helcim.com; frame-src https://checkout.helcim.com; frame-ancestors 'self'"
+async function addSecurityHeaders(response: Response, nonce: string): Promise<Response> {
+  const contentType = response.headers.get("content-type") || "";
+  let body: string | ReadableStream<Uint8Array> | null = response.body;
+
+  // Inject nonce into any inline <script> tags that Astro generated without one
+  if (contentType.includes("text/html") && body) {
+    const html = await response.text();
+    body = html.replace(/<script(?![^>]*\bnonce=)/g, `<script nonce="${nonce}"`);
+  }
+
+  const patched = new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: new Headers(response.headers),
+  });
+  patched.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  patched.headers.set("X-Content-Type-Options", "nosniff");
+  patched.headers.set("X-Frame-Options", "SAMEORIGIN");
+  patched.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  patched.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  patched.headers.set("Content-Security-Policy",
+    `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://js.helcim.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.helcim.com; frame-src https://checkout.helcim.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'`
   );
-  return response;
+  return patched;
 }
 
 function jsonError(message: string, status: number): Response {

@@ -43,22 +43,22 @@ const chartData = allDues.map(d => ({
         <p class:list={["text-xl md:text-2xl font-bold mt-1", totalOwed > 0 ? "text-red-600" : "text-green-600"]}>
           ${totalOwed.toFixed(2)}
         </p>
-        {totalOwed > 0 && <a href="/payments" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-block">Pay now &rarr;</a>}
+        {totalOwed > 0 && <a href="/payments" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-flex items-center min-h-[44px] md:min-h-0">Pay now &rarr;</a>}
       </div>
       <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
         <p class="text-xs md:text-sm text-gray-500">Pending Dues</p>
         <p class="text-xl md:text-2xl font-bold text-gray-900 mt-1">{pendingDues.length}</p>
-        <a href="/payments" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-block">View details</a>
+        <a href="/payments" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-flex items-center min-h-[44px] md:min-h-0">View details</a>
       </div>
       <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
         <p class="text-xs md:text-sm text-gray-500">Active Ballots</p>
         <p class="text-xl md:text-2xl font-bold text-gray-900 mt-1">{ballotCount}</p>
-        {ballotCount > 0 && <a href="/voting" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-block">Vote now</a>}
+        {ballotCount > 0 && <a href="/voting" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-flex items-center min-h-[44px] md:min-h-0">Vote now</a>}
       </div>
       <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-5">
         <p class="text-xs md:text-sm text-gray-500">My Requests</p>
         <p class="text-xl md:text-2xl font-bold text-gray-900 mt-1">{recentRequests.length}</p>
-        <a href="/requests" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-block">View all</a>
+        <a href="/requests" class="text-xs md:text-sm text-blue-600 hover:underline mt-1 inline-flex items-center min-h-[44px] md:min-h-0">View all</a>
       </div>
     </div>
 
@@ -75,7 +75,7 @@ const chartData = allDues.map(d => ({
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <div class="flex justify-between items-center mb-4">
           <h2 class="font-semibold text-gray-900">Outstanding Dues</h2>
-          <a href="/payments" class="text-sm text-blue-600 hover:underline">View all</a>
+          <a href="/payments" class="text-sm text-blue-600 hover:underline py-2 -my-2">View all</a>
         </div>
         {pendingDues.length === 0 ? (
           <div class="text-center py-4">
@@ -109,7 +109,7 @@ const chartData = allDues.map(d => ({
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <div class="flex justify-between items-center mb-4">
           <h2 class="font-semibold text-gray-900">Recent Documents</h2>
-          <a href="/documents" class="text-sm text-blue-600 hover:underline">View all</a>
+          <a href="/documents" class="text-sm text-blue-600 hover:underline py-2 -my-2">View all</a>
         </div>
         {recentDocs.length === 0 ? (
           <p class="text-sm text-gray-500">No documents yet.</p>

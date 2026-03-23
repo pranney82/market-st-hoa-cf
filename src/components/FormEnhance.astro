@@ -1,8 +1,9 @@
 ---
 // Progressive enhancement: adds loading states to all forms
 // Disables submit buttons and shows spinner on form submission
+const nonce = Astro.locals.nonce;
 ---
-<script is:inline>
+<script is:inline nonce={nonce}>
   document.addEventListener('submit', (e) => {
     const form = e.target;
     if (!(form instanceof HTMLFormElement)) return;

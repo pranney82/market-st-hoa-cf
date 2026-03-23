@@ -1,0 +1,17 @@
+---
+import App from "../../layouts/App.astro";
+import DocumentUpload from "../../components/DocumentUpload";
+
+const user = Astro.locals.user!;
+if (user.role !== "admin" && user.role !== "board") return Astro.redirect("/documents");
+---
+<App title="Upload Document">
+  <div class="max-w-2xl">
+    <a href="/documents" class="text-sm text-blue-600 hover:underline mb-4 inline-flex items-center min-h-[44px] md:min-h-0">&larr; Back to Documents</a>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload Document</h1>
+
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <DocumentUpload client:load />
+    </div>
+  </div>
+</App>

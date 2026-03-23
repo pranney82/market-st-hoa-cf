@@ -1,19 +1,19 @@
 import { getDb } from "./db";
 import { payments, duesPayments } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
-import { sendDuesNotificationEmail, sendPaymentReceiptEmail } from "./email";
+import { sendDuesNotificationEmail, sendDuesReminderEmail, sendPaymentReceiptEmail, sendRequestStatusEmail, sendWelcomeEmail } from "./email";
 
 export interface EmailMessage {
-  type: "dues_notification" | "payment_receipt" | "dues_reminder" | "request_status" | "password_reset";
+  type: "dues_notification" | "payment_receipt" | "dues_reminder" | "request_status" | "welcome";
   to: string;
   name: string;
   amount?: string;
   dueDate?: string;
   method?: string;
-  resetLink?: string;
   title?: string;
   status?: string;
   notes?: string;
+  requestId?: string;
 }
 
 export interface PaymentMessage {
@@ -32,11 +32,17 @@ export async function handleEmailQueue(batch: MessageBatch<EmailMessage>, env: E
         case "dues_notification":
           await sendDuesNotificationEmail(env, to, name, amount!, dueDate!);
           break;
+        case "dues_reminder":
+          await sendDuesReminderEmail(env, to, name, amount!, dueDate!);
+          break;
         case "payment_receipt":
           await sendPaymentReceiptEmail(env, to, name, amount!, method!);
           break;
-        case "dues_reminder":
-          await sendDuesNotificationEmail(env, to, name, amount!, dueDate!);
+        case "request_status":
+          await sendRequestStatusEmail(env, to, name, msg.body.title!, msg.body.status!, msg.body.notes, msg.body.requestId);
+          break;
+        case "welcome":
+          await sendWelcomeEmail(env, to, name);
           break;
       }
       msg.ack();

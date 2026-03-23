@@ -2,12 +2,22 @@
 import App from "../layouts/App.astro";
 import { getDb } from "../lib/db";
 import { transactions, accountCategories } from "../../shared/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, count } from "drizzle-orm";
+import { parsePagination } from "../lib/pagination";
+import { getMercuryAccounts } from "../lib/mercury";
 
 const user = Astro.locals.user!;
-if (user.role !== "admin" && user.role !== "board") return Astro.redirect("/dashboard");
+const isAdmin = user.role === "admin" || user.role === "board";
+const env = Astro.locals.runtime.env;
+const db = getDb(env);
 
-const db = getDb(Astro.locals.runtime.env);
+// Pagination
+const { page, pageSize } = parsePagination(Astro.url);
+
+// Get total count
+const [{ total }] = await db.select({ total: count() }).from(transactions);
+
+// Get paginated transactions
 const recent = await db.select({
   id: transactions.id,
   date: transactions.date,
@@ -18,8 +28,12 @@ const recent = await db.select({
 }).from(transactions)
   .leftJoin(accountCategories, eq(transactions.categoryId, accountCategories.id))
   .orderBy(desc(transactions.date))
-  .limit(50);
+  .limit(pageSize)
+  .offset((page - 1) * pageSize);
 
+const totalPages = Math.ceil(total / pageSize);
+
+// Income/expense totals
 const totals = await db.select({
   type: transactions.type,
   total: sql<number>`sum(cast(${transactions.amount} as real))`,
@@ -27,26 +41,66 @@ const totals = await db.select({
 
 const income = totals.find(t => t.type === "income")?.total || 0;
 const expenses = totals.find(t => t.type === "expense")?.total || 0;
+
+// Mercury balance (non-blocking — show 0 if not configured or fails)
+let mercuryBalance = 0;
+let mercuryAccounts: { name: string; balance: number; type: string }[] = [];
+if (env.MERCURY_API_TOKEN) {
+  try {
+    const accounts = await getMercuryAccounts(env);
+    mercuryAccounts = accounts.map(a => ({ name: a.name, balance: a.currentBalance, type: a.type }));
+    mercuryBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
+  } catch { /* Mercury unavailable — degrade gracefully */ }
+}
 ---
 <App title="Financials">
   <div class="max-w-4xl">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Financials</h1>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Financials</h1>
+      {isAdmin && env.MERCURY_API_TOKEN && (
+        <form method="POST" action="/api/admin/mercury-sync">
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            Sync Bank
+          </button>
+        </form>
+      )}
+    </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+    {/* Account Balance Cards */}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+      {mercuryBalance > 0 && (
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <p class="text-sm text-gray-500">Bank Balance</p>
+          <p class="text-2xl font-bold text-gray-900 mt-1">${mercuryBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          {mercuryAccounts.length > 1 && (
+            <div class="mt-2 space-y-1">
+              {mercuryAccounts.map(a => (
+                <p class="text-xs text-gray-400">{a.name}: ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <p class="text-sm text-gray-500">Income</p>
-        <p class="text-2xl font-bold text-green-600 mt-1">${income.toFixed(2)}</p>
+        <p class="text-2xl font-bold text-green-600 mt-1">${income.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
       </div>
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <p class="text-sm text-gray-500">Expenses</p>
-        <p class="text-2xl font-bold text-red-600 mt-1">${expenses.toFixed(2)}</p>
+        <p class="text-2xl font-bold text-red-600 mt-1">${expenses.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
       </div>
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <p class="text-sm text-gray-500">Net</p>
         <p class:list={["text-2xl font-bold mt-1", income - expenses >= 0 ? "text-green-600" : "text-red-600"]}>
-          ${(income - expenses).toFixed(2)}
+          ${(income - expenses).toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </p>
       </div>
+    </div>
+
+    {/* Transaction count */}
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-gray-900">Transactions</h2>
+      <p class="text-sm text-gray-500">{total} total</p>
     </div>
 
     {/* Desktop table */}
@@ -102,5 +156,26 @@ const expenses = totals.find(t => t.type === "expense")?.total || 0;
         </div>
       )}
     </div>
+
+    {/* Pagination */}
+    {totalPages > 1 && (
+      <nav class="flex items-center justify-between mt-6" aria-label="Pagination">
+        <p class="text-sm text-gray-500">
+          Page {page} of {totalPages}
+        </p>
+        <div class="flex gap-2">
+          {page > 1 && (
+            <a href={`/financials?page=${page - 1}&pageSize=${pageSize}`} class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Previous
+            </a>
+          )}
+          {page < totalPages && (
+            <a href={`/financials?page=${page + 1}&pageSize=${pageSize}`} class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Next
+            </a>
+          )}
+        </div>
+      </nav>
+    )}
   </div>
 </App>

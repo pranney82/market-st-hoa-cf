@@ -2,6 +2,7 @@
 // Reads success/error from URL search params and renders a toast notification
 const success = Astro.url.searchParams.get("success");
 const error = Astro.url.searchParams.get("error");
+const nonce = Astro.locals.nonce;
 
 const messages: Record<string, string> = {
   profile: "Profile updated successfully.",
@@ -44,7 +45,7 @@ const type = success ? "success" : "error";
       <span>{message}</span>
       <button
         id="toast-close"
-        class="ml-auto -mr-1 p-1 rounded-lg hover:bg-black/5 transition-colors"
+        class="ml-auto -mr-2 p-2.5 rounded-lg hover:bg-black/5 transition-colors shrink-0"
         aria-label="Dismiss"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,7 +56,7 @@ const type = success ? "success" : "error";
   </div>
 )}
 
-<script is:inline>
+<script is:inline nonce={nonce}>
   const toast = document.getElementById('toast');
   if (toast) {
     // Auto-dismiss after 4 seconds

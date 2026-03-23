@@ -28,19 +28,26 @@ const fileIcon = (mime: string) => {
   return "doc";
 };
 
-const iconColors: Record<string, string> = {
-  pdf: "bg-red-100 text-red-600",
-  img: "bg-green-100 text-green-600",
-  xls: "bg-emerald-100 text-emerald-600",
-  doc: "bg-blue-100 text-blue-600",
+const thumbBg: Record<string, string> = {
+  pdf: "from-red-500 to-red-700",
+  img: "from-green-500 to-green-700",
+  xls: "from-emerald-500 to-emerald-700",
+  doc: "from-blue-500 to-blue-700",
+};
+
+const thumbIcon: Record<string, string> = {
+  pdf: "M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z M9 13h6m-6 3h4",
+  img: "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z",
+  xls: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+  doc: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
 };
 ---
 <App title="Documents">
-  <div class="max-w-4xl">
+  <div class="max-w-6xl">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Documents</h1>
       {isAdmin && (
-        <a href="/documents/upload" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+        <a href="/documents/upload" class="px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
           Upload
         </a>
       )}
@@ -51,60 +58,220 @@ const iconColors: Record<string, string> = {
         No documents available.
       </div>
     ) : (
-      <>
-        {/* Desktop table */}
-        <div class="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table class="w-full">
-            <thead>
-              <tr class="bg-gray-50 border-b border-gray-200">
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded</th>
-                <th class="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              {docs.map((d) => (
-                <tr class="hover:bg-gray-50">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{d.fileName}</td>
-                  <td class="px-4 py-3">
-                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{d.category || "General"}</span>
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{sizeStr(d.fileSize)}</td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{format(new Date(d.createdAt!), "MMM d, yyyy")}</td>
-                  <td class="px-4 py-3 text-right">
-                    <a href={`/api/documents/${d.id}/download`} class="text-sm text-blue-600 hover:underline">Download</a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile cards */}
-        <div class="md:hidden space-y-3">
-          {docs.map((d) => {
-            const type = fileIcon(d.mimeType);
-            return (
-              <a href={`/api/documents/${d.id}/download`} class="block bg-white rounded-xl border border-gray-200 p-4 active:bg-gray-50 transition-colors">
-                <div class="flex items-center gap-3">
-                  <div class:list={["w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0", iconColors[type]]}>
-                    {type.toUpperCase()}
+      <div id="doc-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        {docs.map((d) => {
+          const type = fileIcon(d.mimeType);
+          const isImage = d.mimeType.startsWith("image/");
+          return (
+            <button
+              type="button"
+              class="doc-card group block w-full text-left bg-white rounded-lg sm:rounded-xl border border-gray-200 overflow-hidden active:scale-[0.98] hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
+              data-preview-url={`/api/documents/${d.id}/preview`}
+              data-download-url={`/api/documents/${d.id}/download`}
+              data-file-name={d.fileName}
+              data-mime-type={d.mimeType}
+            >
+              <div class="relative h-28 sm:h-36 overflow-hidden">
+                {isImage ? (
+                  <img
+                    src={`/api/documents/${d.id}/preview`}
+                    alt={d.fileName}
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div class:list={["w-full h-full bg-gradient-to-br flex items-center justify-center", thumbBg[type]]}>
+                    <svg class="w-12 h-12 sm:w-16 sm:h-16 text-white/30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d={thumbIcon[type]} />
+                    </svg>
                   </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 truncate">{d.fileName}</p>
-                    <p class="text-xs text-gray-500">{d.category} · {sizeStr(d.fileSize)} · {format(new Date(d.createdAt!), "MMM d")}</p>
-                  </div>
-                  <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                </div>
-              </a>
-            );
-          })}
-        </div>
-      </>
+                )}
+                <span class:list={["absolute top-1.5 left-1.5 sm:top-2 sm:left-2 text-[11px] font-bold px-1.5 py-0.5 rounded uppercase", isImage ? "bg-black/30 text-white" : "bg-white/20 text-white"]}>
+                  {type}
+                </span>
+                <span class:list={["absolute top-1.5 right-1.5 sm:top-2 sm:right-2 text-[11px] px-1.5 py-0.5 rounded", isImage ? "bg-black/30 text-white" : "bg-white/20 text-white"]}>
+                  {d.category || "General"}
+                </span>
+              </div>
+              <div class="p-2 sm:p-3">
+                <p class="text-xs sm:text-sm font-medium text-gray-900 truncate" title={d.fileName}>{d.fileName}</p>
+                <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">{sizeStr(d.fileSize)} · {format(new Date(d.createdAt!), "MMM d, yyyy")}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     )}
   </div>
+
+  <!-- Fallback template for non-previewable files -->
+  <template id="fallback-tpl">
+    <div class="text-center p-8">
+      <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+      </svg>
+      <p class="text-gray-600 font-medium mb-1" data-slot="name"></p>
+      <p class="text-gray-400 text-sm">Preview not available — tap Download to view</p>
+    </div>
+  </template>
+
+  <!-- Preview modal -->
+  <dialog
+    id="doc-preview"
+    aria-labelledby="preview-title"
+    class="fixed inset-0 m-0 p-0 w-dvw h-dvh max-w-none max-h-none bg-transparent backdrop:bg-black/60"
+  >
+    <div id="preview-panel" class="flex flex-col w-full h-full bg-white">
+      <header class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200 shrink-0 safe-top">
+        <h2 id="preview-title" class="text-xs sm:text-sm font-medium text-gray-900 truncate min-w-0"></h2>
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <a id="preview-download" href="#" download class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors min-h-[44px] min-w-[44px] justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span class="hidden sm:inline">Download</span>
+          </a>
+          <button id="preview-close" type="button" class="p-2 text-gray-500 hover:text-gray-700 active:text-gray-900 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Close preview">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <!-- Loading state -->
+      <div id="preview-loading" class="flex-1 flex items-center justify-center bg-gray-100 hidden">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+          <p class="text-sm text-gray-500">Loading preview…</p>
+        </div>
+      </div>
+      <!-- Content -->
+      <div id="preview-content" class="flex-1 flex items-center justify-center bg-gray-100 overflow-auto overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
+    </div>
+  </dialog>
+
+  <style>
+    /* Safe area insets for notched devices */
+    .safe-top {
+      padding-top: max(0.625rem, env(safe-area-inset-top));
+    }
+    /* Prevent body scroll when dialog is open */
+    html:has(dialog[open]#doc-preview) {
+      overflow: hidden;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("astro:page-load", () => {
+      const dialog = document.getElementById("doc-preview") as HTMLDialogElement | null;
+      if (!dialog) return;
+
+      const titleEl = document.getElementById("preview-title")!;
+      const downloadEl = document.getElementById("preview-download") as HTMLAnchorElement;
+      const contentEl = document.getElementById("preview-content")!;
+      const loadingEl = document.getElementById("preview-loading")!;
+      const closeBtn = document.getElementById("preview-close")!;
+      const panel = document.getElementById("preview-panel")!;
+      const fallbackTpl = document.getElementById("fallback-tpl") as HTMLTemplateElement;
+
+      function showLoading() {
+        loadingEl.classList.remove("hidden");
+        contentEl.classList.add("hidden");
+      }
+
+      function showContent() {
+        loadingEl.classList.add("hidden");
+        contentEl.classList.remove("hidden");
+      }
+
+      function showFallback(fileName: string) {
+        contentEl.replaceChildren();
+        const clone = fallbackTpl.content.cloneNode(true) as DocumentFragment;
+        clone.querySelector("[data-slot='name']")!.textContent = fileName;
+        contentEl.appendChild(clone);
+        showContent();
+      }
+
+      function openPreview(previewUrl: string, downloadUrl: string, fileName: string, mimeType: string) {
+        titleEl.textContent = fileName;
+        downloadEl.href = downloadUrl;
+        contentEl.replaceChildren();
+        showLoading();
+        dialog.showModal();
+        closeBtn.focus();
+
+        if (mimeType.startsWith("image/")) {
+          const img = document.createElement("img");
+          img.src = previewUrl;
+          img.alt = fileName;
+          img.className = "max-w-full max-h-full object-contain";
+          img.onload = showContent;
+          img.onerror = () => showFallback(fileName);
+          contentEl.appendChild(img);
+        } else if (mimeType.includes("pdf")) {
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          if (isIOS) {
+            showFallback(fileName);
+          } else {
+            const iframe = document.createElement("iframe");
+            iframe.src = previewUrl;
+            iframe.className = "w-full h-full border-0";
+            iframe.title = fileName;
+            iframe.onload = showContent;
+            contentEl.appendChild(iframe);
+          }
+        } else {
+          showFallback(fileName);
+        }
+      }
+
+      // Event delegation — one handler for all cards
+      document.getElementById("doc-grid")?.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".doc-card");
+        if (!btn) return;
+        openPreview(
+          btn.dataset.previewUrl!,
+          btn.dataset.downloadUrl!,
+          btn.dataset.fileName!,
+          btn.dataset.mimeType!,
+        );
+      });
+
+      closeBtn.addEventListener("click", () => dialog.close());
+
+      // Backdrop close: mousedown+mouseup both on dialog (not panel)
+      let backdropDown = false;
+      dialog.addEventListener("mousedown", (e) => {
+        backdropDown = e.target === dialog;
+      });
+      dialog.addEventListener("mouseup", (e) => {
+        if (backdropDown && e.target === dialog) dialog.close();
+        backdropDown = false;
+      });
+
+      // Swipe down to close on touch devices
+      let touchStartY = 0;
+      let touchStartX = 0;
+      panel.addEventListener("touchstart", (e) => {
+        const touch = e.touches[0];
+        touchStartY = touch.clientY;
+        touchStartX = touch.clientX;
+      }, { passive: true });
+
+      panel.addEventListener("touchend", (e) => {
+        const touch = e.changedTouches[0];
+        const deltaY = touch.clientY - touchStartY;
+        const deltaX = Math.abs(touch.clientX - touchStartX);
+        // Swipe down: >80px vertical, more vertical than horizontal, started in top 80px
+        if (deltaY > 80 && deltaY > deltaX && touchStartY < 80) {
+          dialog.close();
+        }
+      }, { passive: true });
+
+      dialog.addEventListener("close", () => {
+        contentEl.replaceChildren();
+      });
+    });
+  </script>
 </App>

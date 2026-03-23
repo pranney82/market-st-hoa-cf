@@ -49,9 +49,10 @@ max_batch_timeout = 30
 # Cron Triggers
 [triggers]
 crons = [
-  "1 0 1 * *",
-  "0 1 * * *",
-  "0 9 15 * *",
+  "1 0 1 * *",   # Monthly dues generation (1st of month, 12:01 AM)
+  "0 1 * * *",   # Mark overdue dues (daily, 1 AM)
+  "0 9 15 * *",  # Send reminders (15th of month, 9 AM)
+  "0 6 * * *",   # Mercury bank sync (daily, 6 AM)
 ]
 
 [observability]
